@@ -1,6 +1,11 @@
 // WebSocket link to a room, with automatic reconnect (the session token keeps your seat) and server clock sync.
 
 export class Net {
+  static async newCode() {
+    const r = await fetch("/api/new");
+    return r.json();
+  }
+
   constructor({ code, create, onMessage, onStatus }) {
     this.code = code;
     this.create = create;

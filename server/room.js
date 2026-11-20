@@ -188,6 +188,14 @@ export class Room {
     const n = list.length;
     const imps = Math.min(this.settings.impostors, maxImpostors(n));
     const order = this.shuffle(list.slice());
+    // Optional fixed role for one player (used by the offline preview to try either side).
+    if (this.forceRole) {
+      const i = order.findIndex((p) => p.id === this.forceRole.id);
+      if (i >= 0) {
+        const [p] = order.splice(i, 1);
+        if (this.forceRole.role === "imp") order.unshift(p); else order.push(p);
+      }
+    }
     const now = this.now();
     this.resetRound();
     order.forEach((p, i) => {

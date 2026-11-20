@@ -12,7 +12,8 @@
     "start": "node server/dev.mjs",
     "test": "node --test test/*.test.mjs",
     "cf:dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "preview": "node scripts/build-preview.mjs"
   },
   "dependencies": {
     "ws": "8.23.0"

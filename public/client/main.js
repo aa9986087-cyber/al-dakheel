@@ -83,8 +83,7 @@ function homeInit() {
     if (!readName()) return;
     $("createBtn").disabled = true;
     try {
-      const r = await fetch("/api/new");
-      const { code } = await r.json();
+      const { code } = await Net.newCode();
       enterRoom(code, true);
     } catch {
       $("homeMsg").textContent = "تعذّر إنشاء الغرفة، تأكد من الاتصال.";
@@ -114,7 +113,7 @@ function readName() {
 
 function enterRoom(code, create) {
   sfx.unlock();
-  history.replaceState(null, "", "?room=" + code);
+  try { history.replaceState(null, "", "?room=" + code); } catch { /* sandboxed */ }
   $("home").classList.remove("active");
   $("game").classList.add("active");
   if (!renderer) startGame();
@@ -134,7 +133,7 @@ function leaveToHome(text) {
   $("game").classList.remove("active");
   $("home").classList.add("active");
   $("homeMsg").textContent = text || "";
-  history.replaceState(null, "", location.pathname);
+  try { history.replaceState(null, "", location.pathname); } catch { /* sandboxed */ }
 }
 
 // ---------- network messages ----------
@@ -637,8 +636,8 @@ function renderMeeting() {
   const caller = player(m.caller);
   const body = m.body && player(m.body);
   $("meetingTitle").textContent = m.reason === "report"
-    ? `📢 ${caller?.name || ""} وجد ${body ? body.name : "أحد الركاب"} مُقصى!`
-    : `🔔 ${caller?.name || ""} قرع جرس الطوارئ`;
+    ? `📢 بلاغ من ${caller?.name || ""}: ${body ? body.name : "أحد الركاب"} مُقصى!`
+    : `🔔 جرس الطوارئ من ${caller?.name || ""}`;
   const grid = $("voteGrid");
   grid.innerHTML = "";
   const canVote = S.alive && m.myVote === undefined;
