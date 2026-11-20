@@ -29,9 +29,9 @@ const rooms = [
   { id: "engines", name: "المحرك الرئيسي", x: 392, y: 150, w: 326, h: 185, cut: 45, floor: "metal" },
   { id: "generator", name: "المولدات", x: 205, y: 310, w: 187, h: 185, floor: "copper" },
   { id: "guard", name: "برج الحراسة", x: 718, y: 310, w: 200, h: 190, floor: "night" },
-  { id: "medbay", name: "العيادة", x: 460, y: 500, w: 215, h: 110, floor: "marble" },
-  { id: "security", name: "المراقبة", x: 255, y: 700, w: 235, h: 115, floor: "night" },
-  { id: "baggage", name: "الأمتعة", x: 518, y: 610, w: 227, h: 210, floor: "planks" },
+  { id: "security", name: "المراقبة", x: 460, y: 500, w: 215, h: 100, floor: "night" },
+  { id: "baggage", name: "الأمتعة", x: 255, y: 700, w: 235, h: 115, floor: "planks" },
+  { id: "medbay", name: "العيادة", x: 518, y: 610, w: 227, h: 195, floor: "marble" },
   { id: "reactor", name: "المفاعل", x: 70, y: 820, w: 385, h: 290, cut: 70, floor: "metal" },
   { id: "majlis", name: "المجلس", x: 570, y: 820, w: 450, h: 470, cut: 110, floor: "carpet" },
   { id: "air", name: "غرفة الهواء", x: 70, y: 1150, w: 175, h: 190, floor: "teal" },
@@ -52,12 +52,10 @@ const corridors = [
   { id: "genDown", x: 250, y: 495, w: 95, h: 85 },
   { id: "leftJoin", x: 155, y: 580, w: 190, h: 60 },
   { id: "leftOuter", x: 155, y: 640, w: 95, h: 180 },
-  { id: "midHall", x: 345, y: 610, w: 173, h: 50 },
-  { id: "toSec", x: 360, y: 660, w: 60, h: 40 },
-  { id: "secBag", x: 490, y: 750, w: 28, h: 40 },
+  { id: "toBaggage", x: 250, y: 740, w: 5, h: 50 }, // baggage opens only onto the long passage below it
   // right side: guard tower down to the majlis, with a side door from baggage
   { id: "rightCor", x: 765, y: 500, w: 70, h: 320 },
-  { id: "bagRight", x: 745, y: 700, w: 20, h: 60 },
+  { id: "medDoor", x: 745, y: 700, w: 20, h: 60 }, // the clinic's only door, towards the majlis
   // middle: reactor <-> majlis, storage below it
   { id: "reactorLink", x: 455, y: 960, w: 115, h: 70 },
   { id: "toStorage", x: 455, y: 1030, w: 50, h: 120 },
@@ -78,9 +76,9 @@ const tasks = [
   { id: "power", name: "توزيع الطاقة", room: "generator", x: 355, y: 465, type: "switches" },
   { id: "charge", name: "شحن البطاريات", room: "guard", x: 890, y: 340, type: "hold" },
   { id: "radar", name: "ضبط الرادار", room: "guard", x: 760, y: 470, type: "slider" },
-  { id: "scan", name: "الفحص الطبي", room: "medbay", x: 560, y: 575, type: "scan" },
-  { id: "locks", name: "تحديث الأقفال", room: "security", x: 460, y: 790, type: "code" },
-  { id: "sortBags", name: "فرز الأمتعة", room: "baggage", x: 700, y: 790, type: "sequence" },
+  { id: "scan", name: "الفحص الطبي", room: "medbay", x: 630, y: 720, type: "scan" },
+  { id: "locks", name: "تحديث الأقفال", room: "security", x: 640, y: 570, type: "code" },
+  { id: "sortBags", name: "فرز الأمتعة", room: "baggage", x: 455, y: 790, type: "sequence" },
   { id: "calibrate", name: "معايرة المفاعل", room: "reactor", x: 260, y: 1075, type: "slider" },
   { id: "incense", name: "إشعال البخور", room: "majlis", x: 610, y: 1110, type: "clicks" },
   { id: "airClean", name: "تنقية الهواء", room: "air", x: 110, y: 1190, type: "clicks" },
@@ -98,9 +96,9 @@ const vents = [
   { id: "vEng", x: 650, y: 200, links: ["vGen", "vGuard"] },
   { id: "vGen", x: 380, y: 340, links: ["vEng", "vGuard"] },
   { id: "vGuard", x: 880, y: 470, links: ["vEng", "vGen"] },
-  { id: "vSec", x: 285, y: 790, links: ["vMed", "vBag"] },
-  { id: "vMed", x: 645, y: 525, links: ["vSec", "vBag"] },
-  { id: "vBag", x: 560, y: 640, links: ["vSec", "vMed"] },
+  { id: "vSec", x: 490, y: 580, links: ["vMed", "vBag"] },
+  { id: "vMed", x: 720, y: 640, links: ["vSec", "vBag"] },
+  { id: "vBag", x: 290, y: 725, links: ["vSec", "vMed"] },
   { id: "vReact", x: 100, y: 1000, links: ["vAir", "vEngB"] },
   { id: "vAir", x: 210, y: 1180, links: ["vReact", "vEngB"] },
   { id: "vEngB", x: 340, y: 1405, links: ["vReact", "vAir"] },
@@ -115,7 +113,7 @@ const base = {
   name: "طائرة الصقر",
   spawn: T({ x: 795, y: 1055 }),
   button: T({ x: 795, y: 1055 }),
-  console: T({ x: 330, y: 735 }), // security cameras
+  console: T({ x: 530, y: 540 }), // security cameras
   admin: T({ x: 575, y: 1770 }), // live map table on the bridge
   cameras: [
     { name: "الممر الأيسر", ...T({ x: 300, y: 610 }) },
