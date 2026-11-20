@@ -1,0 +1,23 @@
+{
+  "name": "al-dakheel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "الدخيل — لعبة جماعية أونلاين للعائلة: طاقم ودخيل على متن طائرة عربية.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node server/dev.mjs",
+    "start": "node server/dev.mjs",
+    "test": "node --test test/*.test.mjs",
+    "cf:dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "ws": "8.23.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.165.0"
+  }
+}

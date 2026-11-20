@@ -1,0 +1,19 @@
+// Cloudflare Workers + Durable Objects (free plan). One Worker serves the game files and the real-time rooms.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "al-dakheel",
+  "main": "server/worker.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/ws/*", "/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+  },
+  // SQLite-backed Durable Objects are the ones available on the free plan.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+  "observability": { "enabled": true }
+}
