@@ -373,7 +373,7 @@ export class Room {
         for (const id of s.holdA) { const p = this.players.get(id); if (!p || !p.alive || !this.near(p, MAP.fixes.fuelA, USE_RANGE + 30)) s.holdA.delete(id); }
         for (const id of s.holdB) { const p = this.players.get(id); if (!p || !p.alive || !this.near(p, MAP.fixes.fuelB, USE_RANGE + 30)) s.holdB.delete(id); }
         if (s.holdA.size && s.holdB.size) { this.sab = null; this.dirty = true; }
-        else if (now >= s.endsAt) this.finish("imp", "تسرّب الوقود ولم يُصلح في الوقت");
+        else if (now >= s.endsAt) this.finish("imp", "خرج المفاعل عن السيطرة قبل إصلاحه");
       }
     } else if (this.phase === "meeting") {
       if (now >= this.meeting.voteEndsAt) this.resolveVotes();

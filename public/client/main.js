@@ -447,7 +447,7 @@ function sabText(sab) {
   if (sab.kind === "comms") return "الاتصالات مقطوعة! أصلحها من غرفة الاتصالات";
   if (sab.kind === "fuel") {
     const left = Math.max(0, Math.ceil((sab.endsAt - serverNow()) / 1000));
-    return `تسرّب الوقود! ${ar(left)} ث — أمسكوا اللوحتين معًا (خزان الوقود + المخزن) [${ar(sab.a || 0)}/${ar(sab.b || 0)}]`;
+    return `خلل في المفاعل! ${ar(left)} ث — أمسكوا لوحتي المفاعل معًا [${ar(sab.a || 0)}/${ar(sab.b || 0)}]`;
   }
   return "";
 }
@@ -505,6 +505,7 @@ function nearestUse() {
     opts.push({ kind: "bell", ...MAP.button, r: BUTTON_RANGE });
   }
   opts.push({ kind: "cams", ...MAP.console, r: USE_RANGE });
+  opts.push({ kind: "admin", ...MAP.admin, r: USE_RANGE + 40 });
   let best = null, bd = Infinity;
   for (const o of opts) { const d = dist(me, o); if (d <= o.r && d < bd) { best = o; bd = d; } }
   return best;
@@ -540,10 +541,11 @@ function use() {
   else if (u.kind === "fix") openFix(u.fix);
   else if (u.kind === "fuel") openFuel(u.panel);
   else if (u.kind === "cams") openCams();
+  else if (u.kind === "admin") openAdmin();
   else if (u.kind === "bell") {
     if (serverNow() < S.buttonReadyAt) return toast(`الجرس جاهز بعد ${ar(Math.ceil((S.buttonReadyAt - serverNow()) / 1000))} ث`);
     if (S.emergenciesLeft <= 0) return toast("استهلكت اجتماعات الطوارئ");
-    if (S.sab?.kind === "fuel") return toast("لا يمكن قرع الجرس أثناء تسرّب الوقود!");
+    if (S.sab?.kind === "fuel") return toast("لا يمكن قرع الجرس أثناء خلل المفاعل!");
     net.send({ t: "emergency" });
   }
 }
@@ -571,6 +573,8 @@ function closeModal() {
   if (modal.kind === "fuel") net?.send({ t: "hold", panel: modal.panel, on: false });
   modal.cleanup && modal.cleanup();
   modal = null;
+  $("taskBody").style.minHeight = "";
+  document.querySelector("#taskModal .task-box").style.width = "";
   show("taskModal", false);
   $("taskBody").innerHTML = "";
 }
@@ -595,8 +599,8 @@ function openFix(kind) {
 }
 
 function openFuel(panel) {
-  const m = openModal("fuel", "إيقاف تسرّب الوقود", (body) => {
-    body.innerHTML = `<div class="mg-note">اضغط مطوّلاً على اللوحة، ولاعب آخر يمسك اللوحة الثانية في ${panel === "A" ? "المخزن" : "خزان الوقود"} في نفس الوقت</div>`;
+  const m = openModal("fuel", "تثبيت المفاعل", (body) => {
+    body.innerHTML = `<div class="mg-note">اضغط مطوّلاً على اللوحة، ولاعب آخر يمسك اللوحة الثانية على ${panel === "A" ? "الجهة اليمنى" : "الجهة اليسرى"} من المفاعل في نفس الوقت</div>`;
     const b = document.createElement("button");
     b.className = "mg-hold"; b.innerHTML = icon("use");
     b.firstChild.style.cssText = "width:70px;height:70px";
@@ -636,6 +640,38 @@ function openCams() {
     loop();
     return () => cancelAnimationFrame(raf);
   });
+}
+
+/** Admin table: a live map with an anonymous figure per person in each room. Off while comms are cut. */
+function openAdmin() {
+  openModal("admin", "خريطة الإدارة الحيّة", (body) => {
+    const cv = document.createElement("canvas");
+    cv.id = "adminCanvas";
+    cv.style.cssText = "width:100%;border-radius:12px;border:2px solid var(--gold3)";
+    const note = document.createElement("div");
+    note.className = "mg-note";
+    body.append(cv, note);
+    let raf;
+    const loop = () => {
+      const down = S?.sab?.kind === "comms";
+      note.textContent = down ? "الاتصالات مقطوعة — الخريطة لا تعمل" : "عدد الأشخاص في كل غرفة الآن";
+      const counts = new Map();
+      const people = [...others.values()].filter((o) => !o.ghost && !o.vented);
+      if (amAlive() && !S.vent) people.push(me);
+      for (const o of people) { const r = roomAt(o.x, o.y); if (r) counts.set(r.id, (counts.get(r.id) || 0) + 1); }
+      const markers = [];
+      if (!down) for (const r of MAP.rooms) {
+        const n = counts.get(r.id) || 0;
+        for (let i = 0; i < n; i++) markers.push({ x: r.x + r.w / 2 + (i - (n - 1) / 2) * 46, y: r.y + r.h / 2 + 40, color: "#e9e3d6", r: 15 });
+      }
+      renderer.drawOverview(cv, markers, performance.now() / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  });
+  $("taskBody").style.minHeight = "0";
+  document.querySelector("#taskModal .task-box").style.width = "min(1000px, 100%)";
 }
 
 let mapRaf = 0;
@@ -716,7 +752,7 @@ function hudInit() {
   };
 }
 
-const USE_LABEL = { bell: ["bell", "الجرس"], cams: ["cams", "الكاميرات"], fix: ["fix", "إصلاح"], fuel: ["fix", "إصلاح"], task: ["use", "استخدام"] };
+const USE_LABEL = { admin: ["map", "الإدارة"], bell: ["bell", "الجرس"], cams: ["cams", "الكاميرات"], fix: ["fix", "إصلاح"], fuel: ["fix", "إصلاح"], task: ["use", "استخدام"] };
 function updateActions() {
   if (!S) return;
   const play = S.phase === "play";

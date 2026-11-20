@@ -210,7 +210,7 @@ function buildWorldOnce() {
   for (const r of MAP.rooms) {
     const [pw, ph, draw] = FLOORS[r.floor];
     f.fillStyle = pattern(f, pw, ph, draw);
-    f.fillRect(r.x, r.y, r.w, r.h);
+    for (const part of r.parts || [r]) f.fillRect(part.x, part.y, part.w, part.h);
   }
   // ambient occlusion: blurred wall mask over the floor
   if ("filter" in f) {
@@ -224,16 +224,21 @@ function buildWorldOnce() {
     f.filter = "blur(4px)"; f.globalAlpha = 0.5; f.drawImage(m, 0, 2);
     f.restore();
   }
-  // corridor runner rugs
-  for (const id of ["hallW", "hallE"]) {
-    const r = MAP.corridors.find((x) => x.id === id);
-    const y = r.y + r.h / 2 - 32;
-    f.fillStyle = "rgba(0,0,0,.3)"; f.fillRect(r.x + 32, y + 6, r.w - 64, 68);
-    f.fillStyle = "#7a1f2b"; f.fillRect(r.x + 30, y, r.w - 60, 64);
-    f.strokeStyle = "#e7c27a"; f.lineWidth = 3; f.strokeRect(r.x + 37, y + 7, r.w - 74, 50);
-    f.strokeStyle = "#1d5d55"; f.lineWidth = 2; f.strokeRect(r.x + 43, y + 13, r.w - 86, 38);
-    for (let x = r.x + 80; x < r.x + r.w - 60; x += 76) { f.fillStyle = "#e7c27a"; star8(f, x, y + 32, 12); f.fill(); f.fillStyle = "#1d5d55"; star8(f, x, y + 32, 5); f.fill(); }
-    for (let x = r.x + 30; x < r.x + r.w - 30; x += 8) { f.fillStyle = "#e9d6b0"; f.fillRect(x, y - 4, 3, 4); f.fillRect(x, y + 64, 3, 4); }
+  // runner rugs along every long corridor
+  for (const r of MAP.corridors) {
+    const horiz = r.w >= r.h;
+    if ((horiz ? r.w : r.h) < 400 || (horiz ? r.h : r.w) < 90) continue;
+    f.save();
+    if (!horiz) { f.translate(r.x + r.w / 2, r.y + r.h / 2); f.rotate(Math.PI / 2); f.translate(-(r.y + r.h / 2), -(r.x + r.w / 2)); }
+    const rx = horiz ? r.x : r.y, ry = horiz ? r.y : r.x, rw = horiz ? r.w : r.h, rh = horiz ? r.h : r.w;
+    const y = ry + rh / 2 - 30;
+    f.fillStyle = "rgba(0,0,0,.3)"; f.fillRect(rx + 32, y + 6, rw - 64, 64);
+    f.fillStyle = "#7a1f2b"; f.fillRect(rx + 30, y, rw - 60, 60);
+    f.strokeStyle = "#e7c27a"; f.lineWidth = 3; f.strokeRect(rx + 37, y + 7, rw - 74, 46);
+    f.strokeStyle = "#1d5d55"; f.lineWidth = 2; f.strokeRect(rx + 43, y + 13, rw - 86, 34);
+    for (let x = rx + 80; x < rx + rw - 60; x += 76) { f.fillStyle = "#e7c27a"; star8(f, x, y + 30, 11); f.fill(); f.fillStyle = "#1d5d55"; star8(f, x, y + 30, 5); f.fill(); }
+    for (let x = rx + 30; x < rx + rw - 30; x += 8) { f.fillStyle = "#e9d6b0"; f.fillRect(x, y - 4, 3, 4); f.fillRect(x, y + 60, 3, 4); }
+    f.restore();
   }
   g.drawImage(fl, 0, 0);
 
@@ -271,7 +276,7 @@ function buildWorldOnce() {
   // Arched windows on the outer walls, lantern niches on inner walls.
   for (const run of faceRuns) {
     if (run.h < WALL_H || run.x1 - run.x0 < 120) continue;
-    const outer = run.ey < 260;
+    const outer = (() => { const cx = Math.floor(((run.x0 + run.x1) / 2) / grid.C); for (let y = Math.floor((run.ey - WALL_H) / grid.C); y >= 0; y--) if (grid.at(cx, y)) return false; return true; })();
     for (let x = Math.ceil((run.x0 + 60) / 200) * 200; x < run.x1 - 60; x += 200) {
       g.save(); g.translate(x, run.ey - 8);
       g.fillStyle = "#c9973f"; g.beginPath(); g.moveTo(-22, 0); g.lineTo(-22, -40); g.quadraticCurveTo(0, -66, 22, -40); g.lineTo(22, 0); g.closePath(); g.fill();
@@ -299,7 +304,7 @@ function buildWorldOnce() {
     if (grid.at(cx, cy) && !grid.at(cx, cy + 1)) { g.fillStyle = "#c9973f"; g.fillRect(cx * 10, (cy + 1) * 10, 10, 3); g.fillStyle = INK; g.fillRect(cx * 10, (cy + 1) * 10 + 3, 10, 2); }
   }
   for (const r of MAP.rooms) {
-    if (r.y + r.h < 1350) continue;
+    { const cx = Math.floor((r.x + r.w / 2) / grid.C); let open = true; for (let y = Math.ceil((r.y + r.h + 20) / grid.C); y < grid.H; y++) if (grid.at(cx, y)) { open = false; break; } if (!open) continue; }
     for (let x = r.x + 60; x < r.x + r.w - 40; x += 110) porthole(g, x, r.y + r.h + 30);
   }
 
@@ -354,7 +359,7 @@ function buildWorldOnce() {
   }
 
   // Exterior propellers at the tail
-  for (const py of [470, 1150]) ANIMS.push({ x: 70, y: py, r: 120, draw: (gg, t) => propeller(gg, 66, py, t) });
+  for (const pp of MAP.propellers || []) ANIMS.push({ x: pp.x, y: pp.y, r: 120, draw: (gg, t) => propeller(gg, pp.x, pp.y, t) });
   return c;
 }
 
@@ -418,7 +423,27 @@ function rug(g, x, y, w, h, base, edge, mid = "#1d5d55") {
   for (let k = x + 4; k < x + w - 4; k += 7) { g.fillStyle = "#e9d6b0"; g.fillRect(k, y - 5, 3, 5); g.fillRect(k, y + h, 3, 5); }
 }
 
+function octPath(g, cx, cy, R) {
+  g.beginPath();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + Math.PI / 8; g.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); }
+  g.closePath();
+}
+
+function octRug(g, cx, cy, R, base, edge, mid = "#1d5d55") {
+  octPath(g, cx, cy + 8, R); g.fillStyle = "rgba(0,0,0,.2)"; g.fill();
+  octPath(g, cx, cy, R); g.fillStyle = base; g.fill();
+  for (const [k, c, w] of [[R - 12, edge, 5], [R - 26, mid, 4], [R - 36, edge, 1.5]]) { octPath(g, cx, cy, k); g.strokeStyle = c; g.lineWidth = w; g.stroke(); }
+  g.fillStyle = edge; star8(g, cx, cy, R * 0.5); g.fill();
+  g.fillStyle = mid; star8(g, cx, cy, R * 0.34); g.fill();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + Math.PI / 8; g.fillStyle = edge; star8(g, cx + Math.cos(a) * (R - 70), cy + Math.sin(a) * (R - 70), 14); g.fill(); }
+  for (let i = 0; i < 8; i++) {
+    const a1 = (i / 8) * TAU + Math.PI / 8, a2 = ((i + 1) / 8) * TAU + Math.PI / 8;
+    for (let k = 0.05; k < 1; k += 0.06) { const x = cx + (Math.cos(a1) * (1 - k) + Math.cos(a2) * k) * (R + 4), y = cy + (Math.sin(a1) * (1 - k) + Math.sin(a2) * k) * (R + 4); g.fillStyle = "#e9d6b0"; g.fillRect(x - 1.5, y - 1.5, 3, 3); }
+  }
+}
+
 function cushion(g, x, y, w, h, c) {
+  if (!isWalkable(x + w / 2, y + h / 2) || !isWalkable(x, y) || !isWalkable(x + w, y + h)) return;
   rr(g, x, y + 5, w, h, 9); g.fillStyle = "rgba(0,0,0,.35)"; g.fill();
   rr(g, x, y, w, h, 9); fillStroke(g, c, 2.5);
   rr(g, x + 5, y + 5, w - 10, h - 10, 6); g.strokeStyle = "rgba(240,200,120,.75)"; g.lineWidth = 1.5; g.stroke();
@@ -426,6 +451,7 @@ function cushion(g, x, y, w, h, c) {
 }
 
 function crate(g, x, y, s) {
+  if (!isWalkable(x, y) || !isWalkable(x + s, y + s)) return;
   shadowEllipse(g, x + s / 2, y + s + 2, s / 2, 6, 0.3);
   rr(g, x, y, s, s, 4); fillStroke(g, "#9a6b3c", 3);
   g.strokeStyle = "#5a3a1c"; g.lineWidth = 4; g.strokeRect(x + 5, y + 5, s - 10, s - 10);
@@ -454,27 +480,34 @@ function steam(g, x, y, t, k = 0) {
   }
 }
 
+/** Does a box sit in front of a doorway into its room? (keeps furniture out of passages) */
+function nearPassage(x, y, w, h) {
+  return MAP.corridors.some((c) => x < c.x + c.w + 10 && x + w > c.x - 10 && y < c.y + c.h + 10 && y + h > c.y - 10);
+}
+
 function drawDecor(g) {
   const R = Object.fromEntries(MAP.rooms.map((r) => [r.id, r]));
   const light = (x, y, r = 220, color = "255,190,100", a = 0.22) => {
     LIGHTS.push({ x, y, r, color, a, flicker: Math.random() * 10 });
   };
   const hanging = (x, y) => {
+    if (!isWalkable(x, y + 12)) return;
     lanternShape(g, x, y, 1.1);
     light(x, y + 10);
     ANIMS.push({ x, y, r: 30, draw: (gg, t) => flame(gg, x, y - 1, t, 0.9) });
   };
 
   // --- Majlis: floor seating, great rug, brass table with the emergency bell, incense burner
-  {
+  if (R.majlis) {
     const r = R.majlis;
-    rug(g, r.x + 70, r.y + 80, r.w - 140, r.h - 160, "#7a1f2b", "#e7c27a");
+    if (r.cut) octRug(g, r.x + r.w / 2, r.y + r.h / 2, Math.min(r.w, r.h) / 2 - 60, "#7a1f2b", "#e7c27a");
+    else rug(g, r.x + 70, r.y + 80, r.w - 140, r.h - 160, "#7a1f2b", "#e7c27a");
     for (let x = r.x + 18; x < r.x + r.w - 70; x += 78) {
-      if (x + 70 > 1440 && x < 1560) continue;
+      if (nearPassage(x, r.y - 20, 68, r.h + 40, true)) continue;
       cushion(g, x, r.y + 12, 68, 36, "#8a2332"); cushion(g, x, r.y + r.h - 50, 68, 36, "#8a2332");
     }
     for (let y = r.y + 70; y < r.y + r.h - 80; y += 78) {
-      if (y + 68 > 700 && y < 860) continue;
+      if (nearPassage(r.x - 20, y, r.w + 40, 68, false)) continue;
       cushion(g, r.x + 12, y, 36, 68, "#1d5d55"); cushion(g, r.x + r.w - 48, y, 36, 68, "#1d5d55");
     }
     const b = MAP.button;
@@ -489,12 +522,26 @@ function drawDecor(g) {
     // emergency bell (animated glint)
     ANIMS.push({ x: b.x, y: b.y, r: 40, draw: (gg, t) => bell(gg, b.x + 6, b.y + 2, t) });
     // incense burner
-    const mx = 1300, my = 1000;
+    const inc = MAP.tasks.find((t) => t.id === "incense"); const mx = inc.x - 50, my = inc.y + 10;
     ANIMS.push({ x: mx, y: my - 30, r: 50, draw: (gg, t) => { for (let i = 0; i < 4; i++) { const p = (t * 0.35 + i / 4) % 1; gg.fillStyle = `rgba(230,230,240,${0.22 * (1 - p)})`; gg.beginPath(); gg.arc(mx + Math.sin(t * 1.5 + i) * 10 * p, my - 20 - p * 60, 5 + p * 12, 0, TAU); gg.fill(); } } });
-    for (const [x, y] of [[r.x + 40, r.y + 70], [r.x + r.w - 40, r.y + 70], [r.x + 40, r.y + r.h - 80], [r.x + r.w - 40, r.y + r.h - 80]]) hanging(x, y);
+    const ins = (r.cut || 0) * 0.75 + 40;
+    for (const [x, y] of [[r.x + ins, r.y + ins], [r.x + r.w - ins, r.y + ins], [r.x + ins, r.y + r.h - ins - 20], [r.x + r.w - ins, r.y + r.h - ins - 20]]) hanging(x, y);
+    if (r.cut) {
+      // four low tables with cushions round them, between the bell and the walls
+      const b2 = MAP.button, d = Math.min(r.w, r.h) * 0.27;
+      for (const [dx, dy] of [[-d, -d], [d, -d], [-d, d], [d, d]]) {
+        const x = b2.x + dx, y = b2.y + dy;
+        for (const [ox, oy] of [[-58, -18], [26, -18], [-18, -60], [-18, 30]]) cushion(g, x + ox + (ox < 0 && Math.abs(ox) > 40 ? 0 : 0), y + oy, ox === -18 ? 36 : 32, ox === -18 ? 30 : 36, "#1d5d55");
+        shadowEllipse(g, x, y + 8, 40, 26, 0.35);
+        g.beginPath(); g.arc(x, y, 34, 0, TAU); fillStroke(g, "#a87a35", 3);
+        g.strokeStyle = "#7a5520"; g.lineWidth = 2; star8(g, x, y, 26); g.stroke();
+        dallah(g, x - 8, y - 4, 0.6);
+        g.beginPath(); g.ellipse(x + 14, y + 8, 5, 4, 0, 0, TAU); fillStroke(g, "#f6ecdc", 1.5);
+      }
+    }
   }
   // --- Hospitality: counters, stove, coffee pots with steam, dates
-  {
+  if (R.kitchen) {
     const r = R.kitchen;
     rr(g, r.x + 10, r.y + 6, r.w - 20, 54, 6); fillStroke(g, "#5a361d", 3);
     g.fillStyle = "#e9d6b0"; g.fillRect(r.x + 12, r.y + 8, r.w - 24, 9);
@@ -509,37 +556,46 @@ function drawDecor(g) {
       g.strokeStyle = "#c8642a"; g.lineWidth = 3; g.beginPath(); g.arc(fx, fy, 11, 0, TAU); g.stroke();
       ANIMS.push({ x: fx, y: fy, r: 20, draw: (gg, t) => { for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU; gg.fillStyle = `rgba(80,160,255,${0.55 + 0.3 * Math.sin(t * 20 + k)})`; gg.beginPath(); gg.arc(fx + Math.cos(a) * 8, fy + Math.sin(a) * 8, 2.5, 0, TAU); gg.fill(); } } });
     }
-    rug(g, r.x + 120, r.y + 150, 230, 150, "#1d5d55", "#e7c27a", "#7a1f2b");
-    g.beginPath(); g.arc(r.x + 235, r.y + 225, 36, 0, TAU); fillStroke(g, "#a87a35", 3);
-    g.fillStyle = "#4a1f0e"; for (let i = 0; i < 9; i++) { g.beginPath(); g.ellipse(r.x + 220 + (i % 3) * 14, r.y + 212 + Math.floor(i / 3) * 12, 6, 4, 0.5, 0, TAU); g.fill(); }
+    const kw = Math.min(230, r.w - 80), kx = r.x + (r.w - kw) / 2, ky = r.y + Math.min(150, r.h - 170);
+    rug(g, kx, ky, kw, 150, "#1d5d55", "#e7c27a", "#7a1f2b");
+    g.beginPath(); g.arc(kx + kw / 2, ky + 75, 36, 0, TAU); fillStroke(g, "#a87a35", 3);
+    g.fillStyle = "#4a1f0e"; for (let i = 0; i < 9; i++) { g.beginPath(); g.ellipse(kx + kw / 2 - 15 + (i % 3) * 14, ky + 62 + Math.floor(i / 3) * 12, 6, 4, 0.5, 0, TAU); g.fill(); }
     hanging(r.x + 60, r.y + 100); hanging(r.x + r.w - 60, r.y + r.h - 70);
   }
   // --- Cockpit: wide front window with clouds rushing past, consoles, seats
-  {
+  if (R.cockpit) {
     const r = R.cockpit;
-    const cx = r.x + r.w + 4, cy = r.y + r.h / 2, ex = 46, ey = r.h / 2 - 10;
-    g.beginPath(); g.ellipse(cx, cy, ex + 8, ey + 8, 0, -Math.PI / 2, Math.PI / 2); fillStroke(g, "#c9973f", 3);
-    ANIMS.push({ x: cx, y: cy, r: 200, draw: (gg, t) => {
-      gg.save(); gg.beginPath(); gg.ellipse(cx, cy, ex, ey, 0, -Math.PI / 2, Math.PI / 2); gg.clip();
-      const sky = gg.createLinearGradient(cx, cy - ey, cx, cy + ey); sky.addColorStop(0, "#2a3f7a"); sky.addColorStop(1, "#9a6a8a");
-      gg.fillStyle = sky; gg.fillRect(cx - 4, cy - ey, ex + 8, ey * 2);
-      for (let i = 0; i < 7; i++) { const yy = cy - ey + ((i * 53 + t * 140) % (ey * 2 + 40)) - 20; gg.fillStyle = "rgba(255,255,255,.35)"; gg.beginPath(); gg.ellipse(cx + 20 + (i % 3) * 8, yy, 14, 7, 0, 0, TAU); gg.fill(); }
+    // Work in a frame where the window is "below"; rotate the frame when the nose points right.
+    const right = r.x + r.w > MAP.width * 0.75;
+    const W = right ? r.h : r.w, H = right ? r.w : r.h, cut = r.cut || 0;
+    const frame = (gg) => { if (right) { gg.translate(r.x + r.w, r.y); gg.rotate(Math.PI / 2); } else gg.translate(r.x, r.y); };
+    const ex = W / 2 - cut - 6, ey = 46, cx = W / 2, cy = H + 4;
+    g.save(); frame(g);
+    g.beginPath(); g.ellipse(cx, cy, ex + 8, ey + 8, 0, 0, Math.PI); fillStroke(g, "#c9973f", 3);
+    rr(g, cut + 10, H - 100, W - 2 * cut - 20, 48, 12); fillStroke(g, "#1c2a44", 3);
+    g.restore();
+    const wc = right ? { x: r.x + r.w, y: r.y + r.h / 2 } : { x: r.x + r.w / 2, y: r.y + r.h };
+    ANIMS.push({ x: wc.x, y: wc.y, r: 240, draw: (gg, t) => {
+      gg.save(); frame(gg);
+      gg.save(); gg.beginPath(); gg.ellipse(cx, cy, ex, ey, 0, 0, Math.PI); gg.clip();
+      const sky = gg.createLinearGradient(cx, cy, cx, cy + ey); sky.addColorStop(0, "#2a3f7a"); sky.addColorStop(1, "#9a6a8a");
+      gg.fillStyle = sky; gg.fillRect(cx - ex, cy - 4, ex * 2, ey + 8);
+      for (let i = 0; i < 7; i++) { const xx = cx - ex + ((i * 61 + t * 150) % (ex * 2 + 40)) - 20; gg.fillStyle = "rgba(255,255,255,.35)"; gg.beginPath(); gg.ellipse(xx, cy + 18 + (i % 3) * 8, 16, 7, 0, 0, TAU); gg.fill(); }
       gg.restore();
-      gg.strokeStyle = "#c9973f"; gg.lineWidth = 3; gg.beginPath(); gg.moveTo(cx, cy - ey); gg.lineTo(cx, cy + ey); gg.moveTo(cx, cy); gg.lineTo(cx + ex, cy); gg.stroke();
-    } });
-    rr(g, r.x + r.w - 96, r.y + 54, 64, r.h - 108, 12); fillStroke(g, "#1c2a44", 3);
-    ANIMS.push({ x: r.x + r.w - 64, y: r.y + r.h / 2, r: 140, draw: (gg, t) => {
-      for (let y = r.y + 74, i = 0; y < r.y + r.h - 66; y += 24, i++) {
+      gg.strokeStyle = "#c9973f"; gg.lineWidth = 3; gg.beginPath(); gg.moveTo(cx - ex, cy); gg.lineTo(cx + ex, cy); gg.moveTo(cx, cy); gg.lineTo(cx, cy + ey); gg.stroke();
+      for (let x = cut + 26, i = 0; x < W - cut - 40; x += 28, i++) {
         gg.fillStyle = i % 3 === 0 ? "#e6a817" : "#5fd4a9"; gg.globalAlpha = 0.55 + 0.45 * Math.sin(t * 3 + i);
-        gg.fillRect(r.x + r.w - 86, y, 44, 8);
+        gg.fillRect(x, H - 88, 16, 22);
       }
       gg.globalAlpha = 1;
+      gg.restore();
     } });
-    for (const y of [r.y + 118, r.y + r.h - 118]) cushion(g, r.x + r.w - 168, y - 26, 52, 52, "#3f51b5");
-    hanging(r.x + 60, r.y + r.h / 2);
+    const seat = right ? [[r.x + r.w - 170, r.y + r.h / 2 - 70], [r.x + r.w - 170, r.y + r.h / 2 + 26]] : [[r.x + r.w / 2 - 70, r.y + r.h - 170], [r.x + r.w / 2 + 26, r.y + r.h - 170]];
+    for (const [x, y] of seat) cushion(g, x, y, 44, 44, "#3f51b5");
+    hanging(right ? r.x + cut + 40 : r.x + r.w / 2, right ? r.y + r.h / 2 : r.y + cut + 40);
   }
   // --- Comms: radio racks with blinking lights, radar screen
-  {
+  if (R.comms) {
     const r = R.comms;
     for (let i = 0; i < 4; i++) {
       rr(g, r.x + 18 + i * 72, r.y + 10, 60, 74, 5); fillStroke(g, "#222b3e", 3);
@@ -563,7 +619,7 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h / 2);
   }
   // --- Generators: spinning copper rotors
-  {
+  if (R.generator) {
     const r = R.generator;
     for (let i = 0; i < 2; i++) {
       const cx = r.x + 150 + i * 150, cy = r.y + 170;
@@ -580,12 +636,12 @@ function drawDecor(g) {
       } });
       LIGHTS.push({ x: cx, y: cy, r: 160, color: "255,150,80", a: 0.12 });
     }
-    g.strokeStyle = INK; g.lineWidth = 14; g.beginPath(); g.moveTo(r.x + 30, r.y + 300); g.lineTo(r.x + r.w - 30, r.y + 300); g.stroke();
+    g.strokeStyle = INK; g.lineWidth = 14; g.beginPath(); g.moveTo(r.x + 30, r.y + r.h - 34); g.lineTo(r.x + r.w - 30, r.y + r.h - 34); g.stroke();
     g.strokeStyle = "#b5703f"; g.lineWidth = 9; g.stroke();
     hanging(r.x + r.w / 2, r.y + 60);
   }
   // --- Security: monitor wall
-  {
+  if (R.security) {
     const r = R.security;
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
       const x = r.x + 150 + i * 58, y = r.y + 12 + j * 42;
@@ -599,10 +655,10 @@ function drawDecor(g) {
     hanging(r.x + 60, r.y + r.h - 80);
   }
   // --- Air room: two big ventilation fans and floating dust
-  {
+  if (R.air) {
     const r = R.air;
-    for (const fx of [r.x + 110, r.x + 290]) {
-      const fy = r.y + 150;
+    const spots = r.w >= r.h ? [[r.x + r.w * 0.28, r.y + r.h / 2], [r.x + r.w * 0.72, r.y + r.h / 2]] : [[r.x + r.w / 2, r.y + r.h * 0.3], [r.x + r.w / 2, r.y + r.h * 0.7]];
+    for (const [fx, fy] of spots) {
       g.beginPath(); g.arc(fx, fy, 70, 0, TAU); fillStroke(g, "#203c3e", 4);
       g.beginPath(); g.arc(fx, fy, 62, 0, TAU); g.fillStyle = "#0b2526"; g.fill();
       ANIMS.push({ x: fx, y: fy, r: 75, draw: (gg, t) => {
@@ -619,10 +675,9 @@ function drawDecor(g) {
     LIGHTS.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, r: 260, color: "120,220,210", a: 0.12 });
   }
   // --- Engines: two turbines
-  {
-    const r = R.engines;
+  for (const r of [R.engines, R.engineB].filter(Boolean)) {
     for (let i = 0; i < 2; i++) {
-      const cx = r.x + 130 + i * 190, cy = r.y + 190;
+      const cx = r.x + r.w / 2 + (i ? 100 : -100), cy = r.y + Math.min(190, r.h / 2 + 20);
       shadowEllipse(g, cx, cy + 14, 84, 70, 0.4);
       g.beginPath(); g.arc(cx, cy, 80, 0, TAU); fillStroke(g, "#26272c", 4);
       g.beginPath(); g.arc(cx, cy, 72, 0, TAU); g.strokeStyle = "#c9973f"; g.lineWidth = 5; g.stroke();
@@ -637,13 +692,13 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h - 70);
   }
   // --- Clinic: beds, crescent sign, heart monitor
-  {
+  if (R.medbay) {
     const r = R.medbay;
     for (let i = 0; i < 2; i++) {
       rr(g, r.x + 30 + i * 150, r.y + 36, 112, 60, 10); fillStroke(g, "#f1ece0", 3);
       rr(g, r.x + 30 + i * 150, r.y + 36, 32, 60, 10); fillStroke(g, "#16a085", 2);
     }
-    const cx = r.x + r.w / 2, cy = r.y + 165;
+    const cx = r.x + 60, cy = r.y + r.h - 60;
     g.beginPath(); g.arc(cx, cy, 26, 0, TAU); g.fillStyle = "#16a085"; g.fill();
     g.beginPath(); g.arc(cx + 10, cy - 6, 22, 0, TAU); g.fillStyle = "#e3ddcf"; g.fill();
     const sc = MAP.tasks.find((t) => t.id === "scan");
@@ -658,7 +713,7 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h - 60);
   }
   // --- Library: shelves of books, reading rug, candles
-  {
+  if (R.library) {
     const r = R.library;
     for (let i = 0; i < 4; i++) {
       const x = r.x + 18 + i * 96;
@@ -678,7 +733,7 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h - 60);
   }
   // --- Storage: crates, sacks, rolled carpets
-  {
+  if (R.storage) {
     const r = R.storage;
     for (const [dx, dy, s] of [[30, 30, 60], [96, 30, 60], [30, 96, 60], [r.w - 112, 30, 78], [r.w - 194, 40, 66], [r.w - 104, 122, 62]]) crate(g, r.x + dx, r.y + dy, s);
     for (let i = 0; i < 4; i++) { rr(g, r.x + 40, r.y + 220 + i * 36, 176, 28, 14); fillStroke(g, ["#7a1f2b", "#1d5d55", "#3f51b5", "#c8642a"][i], 2.5); g.strokeStyle = "#e7c27a"; g.lineWidth = 1.5; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(r.x + 70 + k * 36, r.y + 222 + i * 36); g.lineTo(r.x + 70 + k * 36, r.y + 246 + i * 36); g.stroke(); } }
@@ -686,7 +741,7 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h / 2);
   }
   // --- Fuel tank with a bubbling sight glass and a swinging needle
-  {
+  if (R.fuel) {
     const r = R.fuel;
     const cx = r.x + r.w / 2, cy = r.y + 170;
     shadowEllipse(g, cx, cy + 20, 124, 70, 0.4);
@@ -705,10 +760,115 @@ function drawDecor(g) {
     } });
     hanging(cx, r.y + r.h - 60);
   }
-  // Hall lanterns
-  for (let x = 560; x < 1240; x += 260) hanging(x, 735);
-  for (let x = 1900; x < 2550; x += 260) hanging(x, 735);
-  hanging(205, 600); hanging(205, 1050);
+  // --- Reactor: a glowing core with turning rings (the critical sabotage happens here)
+  if (R.reactor) {
+    const r = R.reactor;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    shadowEllipse(g, cx, cy + 20, 150, 120, 0.4);
+    g.beginPath(); g.arc(cx, cy, 140, 0, TAU); fillStroke(g, "#2a2b30", 5);
+    g.beginPath(); g.arc(cx, cy, 128, 0, TAU); g.strokeStyle = "#c9973f"; g.lineWidth = 6; g.stroke();
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; g.strokeStyle = "#5a5e6a"; g.lineWidth = 14; g.beginPath(); g.moveTo(cx + Math.cos(a) * 140, cy + Math.sin(a) * 140); g.lineTo(cx + Math.cos(a) * (r.w / 2 - 30), cy + Math.sin(a) * (r.h / 2 - 30)); g.stroke(); }
+    ANIMS.push({ x: cx, y: cy, r: 160, draw: (gg, t) => {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+      const cg = gg.createRadialGradient(cx, cy, 6, cx, cy, 80);
+      cg.addColorStop(0, "#ffffff"); cg.addColorStop(0.3, `rgba(120,220,255,${0.9})`); cg.addColorStop(1, "rgba(40,120,200,0)");
+      gg.fillStyle = cg; gg.beginPath(); gg.arc(cx, cy, 70 + pulse * 10, 0, TAU); gg.fill();
+      for (const [rad, sp, w] of [[96, 0.8, 6], [112, -0.5, 4]]) {
+        gg.save(); gg.translate(cx, cy); gg.rotate(t * sp);
+        gg.strokeStyle = "#e6a817"; gg.lineWidth = w; gg.setLineDash([26, 14]); gg.beginPath(); gg.arc(0, 0, rad, 0, TAU); gg.stroke(); gg.setLineDash([]);
+        gg.restore();
+      }
+    } });
+    LIGHTS.push({ x: cx, y: cy, r: 320, color: "110,200,255", a: 0.28, flicker: 3 });
+  }
+  // --- Guard tower: a brass telescope, shields on the wall, a map chest
+  if (R.guard) {
+    const r = R.guard;
+    for (let i = 0; i < 3; i++) {
+      const x = r.x + 70 + i * 90, y = r.y + 40;
+      g.beginPath(); g.ellipse(x, y, 26, 30, 0, 0, TAU); fillStroke(g, ["#7a1f2b", "#1d5d55", "#3f51b5"][i], 3);
+      g.fillStyle = "#e7c27a"; star8(g, x, y, 12); g.fill();
+    }
+    const tx = r.x + r.w / 2, ty = r.y + r.h / 2 + 10;
+    shadowEllipse(g, tx, ty + 30, 40, 12, 0.35);
+    ANIMS.push({ x: tx, y: ty, r: 80, draw: (gg, t) => {
+      gg.save(); gg.translate(tx, ty); gg.rotate(Math.sin(t * 0.4) * 0.6 - 0.6);
+      rr(gg, -8, -70, 16, 80, 6); gg.fillStyle = "#c9973f"; gg.fill(); gg.strokeStyle = INK; gg.lineWidth = 2.5; gg.stroke();
+      rr(gg, -11, -80, 22, 16, 4); gg.fillStyle = "#7a5520"; gg.fill(); gg.stroke();
+      gg.restore();
+      gg.beginPath(); gg.arc(tx, ty + 10, 12, 0, TAU); gg.fillStyle = "#3a2416"; gg.fill(); gg.strokeStyle = INK; gg.stroke();
+    } });
+    crate(g, r.x + r.w - 110, r.y + r.h - 100, 64);
+    hanging(r.x + 50, r.y + r.h - 60);
+  }
+  // --- Gear store: barrels and crates
+  if (R.gear) {
+    const r = R.gear;
+    for (const [dx, dy] of [[40, 40], [100, 40], [40, 100]]) {
+      const x = r.x + dx, y = r.y + dy;
+      shadowEllipse(g, x, y + 22, 26, 8, 0.3);
+      g.beginPath(); g.ellipse(x, y, 24, 26, 0, 0, TAU); fillStroke(g, "#7a4b2e", 3);
+      g.strokeStyle = "#c9973f"; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, 24, 10, 0, 0, TAU); g.stroke();
+    }
+    crate(g, r.x + r.w - 150, r.y + 30, 64); crate(g, r.x + r.w - 80, r.y + 30, 54);
+    hanging(r.x + r.w / 2, r.y + r.h - 60);
+  }
+
+  // Corridor lanterns, spaced along every long passage
+  for (const c of MAP.corridors) {
+    const horiz = c.w >= c.h;
+    const len = horiz ? c.w : c.h;
+    if (len < 300) continue;
+    for (let k = 150; k < len - 100; k += 300) hanging(horiz ? c.x + k : c.x + 22, horiz ? c.y + 24 : c.y + k);
+  }
+
+  // --- Admin: a long table with a glowing map of the ship
+  if (MAP.admin) {
+    const r = R.admin, a = MAP.admin;
+    rr(g, a.x - 120, a.y - 50, 240, 100, 20); fillStroke(g, "#3a2416", 4);
+    rr(g, a.x - 106, a.y - 38, 212, 76, 14); g.fillStyle = "#0c1830"; g.fill();
+    for (const [dx, dy] of [[-150, 0], [150, 0], [-60, -74], [60, -74], [-60, 74], [60, 74]]) cushion(g, a.x + dx - 20, a.y + dy - 18, 40, 36, "#3f51b5");
+    ANIMS.push({ x: a.x, y: a.y, r: 130, draw: (gg, t) => {
+      gg.save(); gg.translate(a.x, a.y); gg.scale(212 / MAP.width, 76 / MAP.height); gg.translate(-MAP.width / 2, -MAP.height / 2);
+      gg.fillStyle = `rgba(95,212,169,${0.35 + 0.1 * Math.sin(t * 3)})`;
+      for (const w of WALKABLE) gg.fillRect(w.x, w.y, w.w, w.h);
+      gg.restore();
+      gg.fillStyle = "rgba(255,255,255,.12)"; gg.fillRect(a.x - 106, a.y - 38 + ((t * 40) % 76), 212, 2);
+    } });
+    if (r) { for (let i = 0; i < 3; i++) { rr(g, r.x + 20 + i * 60, r.y + 10, 50, 34, 4); fillStroke(g, "#222b3e", 2.5); } hanging(r.x + r.w - 40, r.y + 60); }
+  }
+  // --- Baggage: a conveyor belt with suitcases sliding along
+  if (R.baggage) {
+    const r = R.baggage;
+    const by = r.y + 70;
+    rr(g, r.x + 30, by - 26, r.w - 60, 52, 12); fillStroke(g, "#2a2b30", 3);
+    ANIMS.push({ x: r.x + r.w / 2, y: by, r: r.w / 2, draw: (gg, t) => {
+      gg.save(); gg.beginPath(); gg.rect(r.x + 34, by - 22, r.w - 68, 44); gg.clip();
+      gg.strokeStyle = "#45474f"; gg.lineWidth = 2;
+      for (let x = r.x + 34 - 20 + ((t * 40) % 20); x < r.x + r.w - 34; x += 20) { gg.beginPath(); gg.moveTo(x, by - 22); gg.lineTo(x, by + 22); gg.stroke(); }
+      const cols = ["#7a1f2b", "#1d5d55", "#c9973f", "#3f51b5"];
+      for (let i = 0; i < 5; i++) {
+        const x = r.x + 34 + (((t * 40 + i * 120) % (r.w + 40)) - 40);
+        rr(gg, x, by - 16, 44, 32, 6); gg.fillStyle = cols[i % 4]; gg.fill(); gg.strokeStyle = INK; gg.lineWidth = 2.5; gg.stroke();
+        gg.strokeStyle = "#e7c27a"; gg.lineWidth = 2; gg.beginPath(); gg.moveTo(x + 14, by - 16); gg.lineTo(x + 14, by - 22); gg.lineTo(x + 30, by - 22); gg.lineTo(x + 30, by - 16); gg.stroke();
+      }
+      gg.restore();
+    } });
+    for (const [dx, dy, c] of [[r.w - 160, 140, "#8e44ad"], [r.w - 110, 160, "#c8642a"], [r.w - 200, 170, "#1d5d55"]]) { rr(g, r.x + dx, r.y + dy, 46, 34, 6); fillStroke(g, c, 2.5); }
+    hanging(r.x + r.w / 2, r.y + r.h - 50);
+  }
+  // --- Lockers: a row of carved locker doors
+  if (R.lockers) {
+    const r = R.lockers;
+    for (let i = 0; i < 8; i++) {
+      const x = r.x + 30 + i * 56;
+      rr(g, x, r.y + 8, 48, 70, 4); fillStroke(g, "#5c361d", 2.5);
+      g.strokeStyle = "rgba(231,194,122,.7)"; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x + 24, r.y + 16); g.lineTo(x + 38, r.y + 43); g.lineTo(x + 24, r.y + 70); g.lineTo(x + 10, r.y + 43); g.closePath(); g.stroke();
+      g.fillStyle = "#e7c27a"; g.beginPath(); g.arc(x + 40, r.y + 44, 2.5, 0, TAU); g.fill();
+    }
+    cushion(g, r.x + 140, r.y + 150, 200, 40, "#7a1f2b");
+    hanging(r.x + r.w - 40, r.y + r.h - 60);
+  }
 }
 
 function bell(g, x, y, t) {

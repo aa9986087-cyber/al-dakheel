@@ -1,65 +1,46 @@
 // Computer players for the offline preview. They read the room directly and act through the same
 // messages a real player sends, so the server rules still apply to them.
-import { MAP, TASK_BY_ID, roomAt } from "../public/shared/map.js";
+import { MAP, TASK_BY_ID, roomAt, navGraph } from "../public/shared/map.js";
 import { BASE_SPEED, VISION, KILL_RANGE, TICK_MS } from "../public/shared/config.js";
 import { moveWithCollision, lineClear, closedDoorRects, dist } from "../public/shared/geom.js";
 
 const NAMES = ["أبو سعد", "أم خالد", "ريم", "ناصر", "جدّو", "هيا", "سلطان", "لولوة", "عمّو فهد", "شهد", "بدر"];
 
-// Waypoints along rooms, doorways and halls; straight lines between linked nodes are walkable.
-const NODES = {
-  gen: [510, 380], cGen: [510, 635], hGen: [510, 780], cEng: [510, 925], eng: [525, 1200],
-  sec: [980, 390], cSec: [980, 635], hSec: [980, 780], hMed: [1010, 780], cMed: [1010, 925], med: [1015, 1180],
-  majW: [1270, 780], maj: [1500, 640], majC: [1350, 780], majE: [1730, 780], majS: [1500, 940],
-  hKit: [2100, 780], cKit: [2100, 635], kit: [2100, 380], cSto: [2100, 925], sto: [2110, 1210],
-  ckW: [2580, 780], ck: [2740, 780], ckTop: [2680, 660], cCom: [2680, 560], comB: [2680, 470], com: [2600, 360],
-  ckBot: [2680, 900], cFuel: [2680, 1000], fuelT: [2680, 1100], fuel: [2630, 1220],
-  air: [1500, 280], airW: [1230, 330], airE: [1775, 330], airS: [1500, 460],
-  libN: [1500, 1100], lib: [1500, 1300], libW: [1240, 1270], libE: [1775, 1270],
-  tailG: [280, 450], tail1: [205, 450], tailH: [330, 780], tail2: [205, 780], tailE: [280, 1170], tail3: [205, 1170],
-  kitC: [2385, 350], stoF: [2410, 1250]
-};
-const EDGES = [
-  ["gen", "cGen"], ["cGen", "hGen"], ["hGen", "cEng"], ["cEng", "eng"], ["hGen", "hSec"], ["sec", "cSec"], ["cSec", "hSec"],
-  ["hSec", "hMed"], ["hMed", "cMed"], ["cMed", "med"], ["hMed", "majW"], ["majW", "majC"], ["majC", "maj"], ["majC", "majS"],
-  ["maj", "majE"], ["majS", "majE"], ["majE", "hKit"], ["hKit", "cKit"], ["cKit", "kit"], ["hKit", "cSto"], ["cSto", "sto"],
-  ["hKit", "ckW"], ["ckW", "ck"], ["ck", "ckTop"], ["ckTop", "cCom"], ["cCom", "comB"], ["comB", "com"],
-  ["ck", "ckBot"], ["ckBot", "cFuel"], ["cFuel", "fuelT"], ["fuelT", "fuel"],
-  ["sec", "airW"], ["airW", "air"], ["air", "airE"], ["airE", "kit"], ["air", "airS"], ["airS", "maj"],
-  ["majS", "libN"], ["libN", "lib"], ["med", "libW"], ["libW", "lib"], ["lib", "libE"], ["libE", "sto"],
-  ["gen", "tailG"], ["tailG", "tail1"], ["tail1", "tail2"], ["hGen", "tailH"], ["tailH", "tail2"], ["tail2", "tail3"], ["tail3", "tailE"], ["tailE", "eng"],
-  ["kit", "kitC"], ["kitC", "com"], ["sto", "stoF"], ["stoF", "fuel"]
-];
-const ADJ = {};
-for (const [a, b] of EDGES) { (ADJ[a] ||= []).push(b); (ADJ[b] ||= []).push(a); }
-const pt = (k) => ({ x: NODES[k][0], y: NODES[k][1] });
+// Walking graph generated from the map (see navGraph in public/shared/map.js); shortest paths by Dijkstra.
+const NAV = navGraph();
 
 function nearestNode(p) {
-  let best = null, bd = Infinity;
-  for (const k in NODES) {
-    const n = pt(k), d = dist(p, n);
-    if (d < bd && lineClear(p.x, p.y, n.x, n.y)) { best = k; bd = d; }
+  let best = -1, bd = Infinity;
+  for (const n of NAV.nodes) {
+    const d = dist(p, n);
+    if (d < bd && lineClear(p.x, p.y, n.x, n.y)) { best = n.id; bd = d; }
   }
-  if (best) return best;
-  for (const k in NODES) { const d = dist(p, pt(k)); if (d < bd) { best = k; bd = d; } }
+  if (best >= 0) return best;
+  for (const n of NAV.nodes) { const d = dist(p, n); if (d < bd) { best = n.id; bd = d; } }
   return best;
 }
 
 function findPath(from, to) {
   if (lineClear(from.x, from.y, to.x, to.y)) return [to];
   const a = nearestNode(from), b = nearestNode(to);
-  const prev = { [a]: null }, q = [a];
-  while (q.length) {
-    const k = q.shift();
-    if (k === b) break;
-    for (const n of ADJ[k] || []) if (!(n in prev)) { prev[n] = k; q.push(n); }
+  const D = NAV.nodes.map(() => Infinity), prev = NAV.nodes.map(() => -1), done = new Set();
+  D[a] = 0;
+  while (true) {
+    let u = -1, best = Infinity;
+    for (let i = 0; i < D.length; i++) if (!done.has(i) && D[i] < best) { best = D[i]; u = i; }
+    if (u < 0 || u === b) break;
+    done.add(u);
+    for (const e of NAV.edges[u]) if (D[u] + e.d < D[e.to]) { D[e.to] = D[u] + e.d; prev[e.to] = u; }
   }
   const path = [];
-  for (let k = b; k; k = prev[k]) path.unshift(pt(k));
+  for (let k = b; k >= 0; k = prev[k]) path.unshift({ x: NAV.nodes[k].x, y: NAV.nodes[k].y });
   path.push(to);
   return path;
 }
 
+const pt = (n) => ({ x: n.x, y: n.y });
+const maj = MAP.rooms.find((r) => r.id === "majlis");
+const LOBBY_SPOTS = NAV.nodes.filter((n) => Math.abs(n.x - (maj.x + maj.w / 2)) < 700 && Math.abs(n.y - (maj.y + maj.h / 2)) < 500);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const roomName = (p) => roomAt(p.x, p.y)?.name || "الممرات";
 
@@ -151,7 +132,7 @@ export class Bots {
       const p = r.players.get(bot.id);
       if (!p || p.left) continue;
       if (now < bot.wait) continue;
-      if (r.phase === "lobby") this.wander(bot, p, ["maj", "majS", "majW", "majE", "hKit", "hMed"]);
+      if (r.phase === "lobby") this.wander(bot, p, LOBBY_SPOTS);
       else if (r.phase === "play" && now >= r.playStartsAt) {
         if (p.role === "imp" && p.alive) this.imp(bot, p, now);
         else this.crew(bot, p, now);
@@ -160,7 +141,7 @@ export class Bots {
     }
   }
 
-  wander(bot, p, nodes = Object.keys(NODES)) {
+  wander(bot, p, nodes = NAV.nodes) {
     if (!bot.path.length) {
       bot.goal = null;
       const n = pt(pick(nodes));
