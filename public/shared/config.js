@@ -33,7 +33,7 @@ export const TICK_MS = 66; // server tick (~15 Hz)
 
 export const TIMES = {
   roleReveal: 4000, // role screen before play actually starts
-  eject: 7000,
+  eject: 9500, // ~3s vote reveal + ejection scene
   afterMeeting: 12000, // emergency button + sabotage cooldown after a meeting
   critical: 45000, // fuel leak countdown
   doors: 10000,
@@ -50,8 +50,7 @@ export const SETTINGS = {
   speed: { def: 1, min: 0.75, max: 1.5, step: 0.25, label: "سرعة اللاعبين" },
   vision: { def: 1, min: 0.5, max: 1.5, step: 0.25, label: "مدى رؤية الطاقم" },
   tasks: { def: 5, min: 2, max: 8, step: 1, label: "عدد المهام" },
-  discussion: { def: 30, min: 0, max: 120, step: 15, label: "وقت النقاش (ث)" },
-  voting: { def: 60, min: 15, max: 150, step: 15, label: "وقت التصويت (ث)" },
+  voting: { def: 90, min: 30, max: 180, step: 15, label: "مدة الاجتماع (ث)" },
   emergencies: { def: 1, min: 0, max: 3, step: 1, label: "اجتماعات الطوارئ لكل لاعب" },
   confirmEjects: { def: 1, min: 0, max: 1, step: 1, label: "كشف هوية المطرود" }
 };

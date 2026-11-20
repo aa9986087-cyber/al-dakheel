@@ -13,14 +13,22 @@ const NODES = {
   majW: [1270, 780], maj: [1500, 640], majC: [1350, 780], majE: [1730, 780], majS: [1500, 940],
   hKit: [2100, 780], cKit: [2100, 635], kit: [2100, 380], cSto: [2100, 925], sto: [2110, 1210],
   ckW: [2580, 780], ck: [2740, 780], ckTop: [2680, 660], cCom: [2680, 560], comB: [2680, 470], com: [2600, 360],
-  ckBot: [2680, 900], cFuel: [2680, 1000], fuelT: [2680, 1100], fuel: [2630, 1220]
+  ckBot: [2680, 900], cFuel: [2680, 1000], fuelT: [2680, 1100], fuel: [2630, 1220],
+  air: [1500, 280], airW: [1230, 330], airE: [1775, 330], airS: [1500, 460],
+  libN: [1500, 1100], lib: [1500, 1300], libW: [1240, 1270], libE: [1775, 1270],
+  tailG: [280, 450], tail1: [205, 450], tailH: [330, 780], tail2: [205, 780], tailE: [280, 1170], tail3: [205, 1170],
+  kitC: [2385, 350], stoF: [2410, 1250]
 };
 const EDGES = [
   ["gen", "cGen"], ["cGen", "hGen"], ["hGen", "cEng"], ["cEng", "eng"], ["hGen", "hSec"], ["sec", "cSec"], ["cSec", "hSec"],
   ["hSec", "hMed"], ["hMed", "cMed"], ["cMed", "med"], ["hMed", "majW"], ["majW", "majC"], ["majC", "maj"], ["majC", "majS"],
   ["maj", "majE"], ["majS", "majE"], ["majE", "hKit"], ["hKit", "cKit"], ["cKit", "kit"], ["hKit", "cSto"], ["cSto", "sto"],
   ["hKit", "ckW"], ["ckW", "ck"], ["ck", "ckTop"], ["ckTop", "cCom"], ["cCom", "comB"], ["comB", "com"],
-  ["ck", "ckBot"], ["ckBot", "cFuel"], ["cFuel", "fuelT"], ["fuelT", "fuel"]
+  ["ck", "ckBot"], ["ckBot", "cFuel"], ["cFuel", "fuelT"], ["fuelT", "fuel"],
+  ["sec", "airW"], ["airW", "air"], ["air", "airE"], ["airE", "kit"], ["air", "airS"], ["airS", "maj"],
+  ["majS", "libN"], ["libN", "lib"], ["med", "libW"], ["libW", "lib"], ["lib", "libE"], ["libE", "sto"],
+  ["gen", "tailG"], ["tailG", "tail1"], ["tail1", "tail2"], ["hGen", "tailH"], ["tailH", "tail2"], ["tail2", "tail3"], ["tail3", "tailE"], ["tailE", "eng"],
+  ["kit", "kitC"], ["kitC", "com"], ["sto", "stoF"], ["stoF", "fuel"]
 ];
 const ADJ = {};
 for (const [a, b] of EDGES) { (ADJ[a] ||= []).push(b); (ADJ[b] ||= []).push(a); }
@@ -236,7 +244,7 @@ export class Bots {
         bot.path = []; bot.goal = null; bot.taskAt = 0;
         const p = r.players.get(bot.id);
         bot.lines = [];
-        bot.voteAt = Math.max(m.discussEndsAt, now) + 1500 + Math.random() * 8000;
+        bot.voteAt = now + 6000 + Math.random() * 16000;
         if (!p || !p.alive) continue;
         const room = roomName(p);
         if (bot.id === m.caller && victim) bot.lines.push([now + 1500, `لقيت ${victim.name} مُقصى! تعالوا نتفاهم`]);
@@ -258,7 +266,7 @@ export class Bots {
       const p = r.players.get(bot.id);
       if (!p) continue;
       while (bot.lines && bot.lines.length && now >= bot.lines[0][0]) this.send(bot, { t: "chat", text: bot.lines.shift()[1] });
-      if (!p.alive || p.vote !== undefined || now < bot.voteAt || now < m.discussEndsAt) continue;
+      if (!p.alive || p.vote !== undefined || now < bot.voteAt) continue;
       const alive = r.living().filter((x) => x !== p);
       let target = "skip";
       const sus = bot.suspect && r.players.get(bot.suspect);

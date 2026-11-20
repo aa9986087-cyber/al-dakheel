@@ -282,10 +282,10 @@ export class Room {
       const sp = spawnPoint(i, alive.length);
       this.teleport(p, sp.x, sp.y);
     });
-    const discussEndsAt = now + this.settings.discussion * 1000;
+    // Voting is open from the first second of the meeting; it ends at the timer or when everyone voted.
     this.meeting = {
       caller: caller.id, reason, body: bodyId || null,
-      startedAt: now, discussEndsAt, voteEndsAt: discussEndsAt + this.settings.voting * 1000,
+      startedAt: now, voteEndsAt: now + this.settings.voting * 1000,
       chat: []
     };
     this.bodies = [];
@@ -443,7 +443,7 @@ export class Room {
     if (this.meeting) {
       const m = this.meeting;
       v.meeting = {
-        caller: m.caller, reason: m.reason, body: m.body, discussEndsAt: m.discussEndsAt, voteEndsAt: m.voteEndsAt,
+        caller: m.caller, reason: m.reason, body: m.body, startedAt: m.startedAt, voteEndsAt: m.voteEndsAt,
         myVote: me.vote,
         chat: m.chat.filter((c) => !c.dead || !me.alive)
       };
@@ -537,6 +537,9 @@ const HANDLERS = {
     this.bodies.push({ id: v.id, x: Math.round(v.x), y: Math.round(v.y), color: v.color });
     this.teleport(p, v.x, v.y);
     p.killReadyAt = now + this.settings.killCooldown * 1000;
+    // Only the two people involved learn this (for their knockout animation).
+    this.send(v, { t: "ko", by: p.id });
+    this.send(p, { t: "kodone", victim: v.id });
     this.dirty = true;
     this.checkWin();
   },
@@ -561,7 +564,6 @@ const HANDLERS = {
 
   vote(p, msg) {
     if (this.phase !== "meeting" || !p.alive || p.left || p.vote !== undefined) return;
-    if (this.now() < this.meeting.discussEndsAt) return;
     const target = msg.target === "skip" ? "skip" : this.players.get(msg.target);
     if (!target || (target !== "skip" && (!target.alive || target.left))) return;
     p.vote = target === "skip" ? "skip" : target.id;

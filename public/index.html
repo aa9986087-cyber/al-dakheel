@@ -3,46 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#140d0a">
+  <meta name="theme-color" content="#0b0716">
   <title>الدخيل — طائرة الصقر</title>
   <meta name="description" content="لعبة جماعية أونلاين للعائلة والأصدقاء: طاقم طائرة الصقر ودخيل بينهم.">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Home: name + create / join -->
+  <canvas id="heroSky" class="hero-sky"></canvas>
+
+  <!-- Home: name + colour + create / join -->
   <section id="home" class="screen active">
-    <div class="home-card">
-      <div class="emblem" aria-hidden="true"></div>
-      <h1 class="title">الدخيل</h1>
-      <p class="subtitle">على متن <b>طائرة الصقر</b> — أنجزوا المهام واكشفوا الدخيل قبل أن يسيطر على الرحلة</p>
-      <label class="field">
-        <span>اسمك</span>
-        <input id="nameInput" maxlength="14" autocomplete="nickname" placeholder="مثلاً: أبو فهد">
-      </label>
-      <div class="field">
-        <span>لونك</span>
-        <div id="colorPick" class="color-grid"></div>
+    <div class="home-wrap">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <h1 class="title">الدخيل</h1>
+        <p class="tagline">على متن <b>طائرة الصقر</b> — أنجزوا المهام واكشفوا الدخيل قبل أن يسيطر على الرحلة</p>
+      </header>
+      <div class="card home-card ornate">
+        <div class="home-grid">
+          <div class="home-preview">
+            <canvas id="previewChar" width="220" height="220"></canvas>
+            <div id="previewName" class="preview-name">ضيف</div>
+          </div>
+          <div class="home-form">
+            <label class="field">
+              <span>اسمك</span>
+              <input id="nameInput" maxlength="14" autocomplete="nickname" placeholder="مثلاً: أبو فهد">
+            </label>
+            <div class="field">
+              <span>لون ثوبك</span>
+              <div id="colorPick" class="color-grid"></div>
+            </div>
+          </div>
+        </div>
+        <button id="createBtn" class="btn gold big shine"><i data-icon="play"></i><span>إنشاء غرفة جديدة</span></button>
+        <div class="join-row">
+          <input id="codeInput" maxlength="5" placeholder="رمز الغرفة" dir="ltr" autocapitalize="characters" autocomplete="off">
+          <button id="joinBtn" class="btn">انضمام</button>
+        </div>
+        <p id="homeMsg" class="msg" role="status"></p>
+        <details class="howto">
+          <summary>كيف نلعب؟</summary>
+          <ul>
+            <li><b>الطاقم:</b> تجوّلوا في الطائرة وأنجزوا مهامكم. إذا وجدتم راكبًا مُقصى بلّغوا فورًا.</li>
+            <li><b>الدخيل:</b> اندمج مع الطاقم، أقصِ الركاب بهدوء، عطّل الأنظمة، وتنقّل عبر الفتحات السرية.</li>
+            <li><b>المجلس:</b> عند البلاغ أو قرع الجرس يجتمع الجميع؛ التصويت متاح من أول لحظة.</li>
+            <li><b>الفوز:</b> الطاقم بإنجاز كل المهام أو طرد كل الدخلاء، والدخلاء إذا تساوى عددهم مع الطاقم أو انفجر خزان الوقود.</li>
+            <li><b>التحكم:</b> الأسهم أو WASD، <kbd>E</kbd> استخدام، <kbd>R</kbd> بلاغ، <kbd>Q</kbd> إقصاء، <kbd>V</kbd> فتحة، <kbd>F</kbd> تخريب، <kbd>M</kbd> الخريطة. على الجوال: عصا التحكم والأزرار.</li>
+          </ul>
+        </details>
       </div>
-      <button id="createBtn" class="btn gold big">إنشاء غرفة جديدة</button>
-      <div class="join-row">
-        <input id="codeInput" maxlength="5" placeholder="رمز الغرفة" dir="ltr" autocapitalize="characters" autocomplete="off">
-        <button id="joinBtn" class="btn">انضمام</button>
-      </div>
-      <p id="homeMsg" class="msg" role="status"></p>
-      <details class="howto">
-        <summary>كيف نلعب؟</summary>
-        <ul>
-          <li><b>الطاقم:</b> تجوّلوا في الطائرة وأنجزوا مهامكم. إذا وجدتم ضحية بلّغوا فورًا.</li>
-          <li><b>الدخيل:</b> اندمج مع الطاقم، أقصِ الركاب بهدوء، عطّل الأنظمة، وتنقّل عبر الفتحات السرية.</li>
-          <li><b>المجلس:</b> عند البلاغ أو قرع جرس الطوارئ يجتمع الجميع للنقاش والتصويت على طرد المشتبه به.</li>
-          <li><b>الفوز:</b> الطاقم يفوز بإنجاز كل المهام أو طرد كل الدخلاء، والدخلاء يفوزون إذا تساوى عددهم مع الطاقم أو انفجر خزان الوقود.</li>
-          <li><b>التحكم:</b> الأسهم أو WASD للحركة، <kbd>E</kbd> استخدام، <kbd>R</kbd> بلاغ، <kbd>Q</kbd> إقصاء، <kbd>V</kbd> فتحة سرية، <kbd>M</kbd> الخريطة. على الجوال: عصا التحكم والأزرار.</li>
-        </ul>
-      </details>
     </div>
   </section>
 
@@ -53,44 +67,44 @@
     <div id="hud" class="hud">
       <div class="hud-top">
         <div id="taskPanel" class="task-panel">
-          <div class="bar"><div id="taskBar"></div><span id="taskBarLabel">مهام الطاقم</span></div>
-          <button id="taskToggle" class="task-head">المهام</button>
+          <div class="task-bar"><div id="taskBar"></div><span id="taskBarLabel">مهام الطاقم</span></div>
+          <button id="taskToggle" class="task-head"><i data-icon="list"></i><span>المهام</span></button>
           <ul id="taskList"></ul>
         </div>
-        <div class="hud-top-left">
-          <button id="mapBtn" class="icon-btn" title="الخريطة">🗺️</button>
-          <button id="soundBtn" class="icon-btn" title="الصوت">🔊</button>
+        <div class="hud-tools">
+          <button id="mapBtn" class="round-btn" title="الخريطة (M)"><i data-icon="map"></i></button>
+          <button id="soundBtn" class="round-btn" title="الصوت"><i data-icon="sound"></i></button>
         </div>
       </div>
       <div id="sabBanner" class="sab-banner hidden"></div>
-      <div id="roleTag" class="role-tag"></div>
+      <div id="roleTag" class="role-tag hidden"></div>
       <div id="joystick" class="joystick"><div class="knob"></div></div>
       <div id="actions" class="actions">
-        <button id="actUse" class="act use" data-key="E"><i>✋</i><span>استخدام</span></button>
-        <button id="actReport" class="act report" data-key="R"><i>📢</i><span>بلاغ</span></button>
-        <button id="actKill" class="act kill imp-only" data-key="Q"><i>🗡️</i><span>إقصاء</span><b class="cd"></b></button>
-        <button id="actSab" class="act sab imp-only"><i>⚡</i><span>تخريب</span><b class="cd"></b></button>
-        <button id="actVent" class="act vent imp-only" data-key="V"><i>🕳️</i><span>فتحة</span></button>
+        <button id="actSab" class="act sab imp-only" title="تخريب (F)"><i data-icon="sab"></i><span>تخريب</span><b class="cd"></b></button>
+        <button id="actVent" class="act vent imp-only" title="فتحة (V)"><i data-icon="vent"></i><span>فتحة</span></button>
+        <button id="actKill" class="act kill imp-only" title="إقصاء (Q)"><i data-icon="kill"></i><span>إقصاء</span><b class="cd"></b></button>
+        <button id="actReport" class="act report" title="بلاغ (R)"><i data-icon="report"></i><span>بلاغ</span></button>
+        <button id="actUse" class="act use" title="استخدام (E)"><i data-icon="use"></i><span>استخدام</span></button>
       </div>
       <div id="ventArrows" class="vent-arrows"></div>
     </div>
 
     <!-- Lobby panel (room code, players, settings) -->
-    <div id="lobby" class="panel lobby hidden">
+    <div id="lobby" class="panel lobby ornate hidden">
       <div class="lobby-head">
-        <div>
-          <div class="muted">رمز الغرفة</div>
+        <div class="code-box">
+          <div class="eyebrow">رمز الغرفة</div>
           <div id="roomCode" class="room-code" dir="ltr"></div>
         </div>
         <div class="lobby-share">
-          <button id="copyLink" class="btn small">نسخ الرابط</button>
-          <button id="shareLink" class="btn small">مشاركة</button>
-          <button id="lobbyToggle" class="btn small ghost">إخفاء</button>
+          <button id="copyLink" class="btn small"><i data-icon="copy"></i><span>نسخ الرابط</span></button>
+          <button id="shareLink" class="btn small"><i data-icon="share"></i><span>مشاركة</span></button>
+          <button id="lobbyToggle" class="btn small ghost"><i data-icon="close"></i></button>
         </div>
       </div>
       <div class="lobby-body">
         <div class="lobby-col">
-          <h3>اللاعبون <span id="playerCount"></span></h3>
+          <h3><i data-icon="users"></i> اللاعبون <span id="playerCount"></span></h3>
           <ul id="lobbyPlayers" class="lobby-players"></ul>
           <div class="field compact">
             <span>اسمك ولونك</span>
@@ -99,19 +113,19 @@
           </div>
         </div>
         <div class="lobby-col">
-          <h3>إعدادات الغرفة</h3>
+          <h3><i data-icon="gear"></i> إعدادات الغرفة</h3>
           <div id="settingsBox" class="settings"></div>
         </div>
       </div>
       <div class="lobby-foot">
         <p id="lobbyHint" class="muted"></p>
-        <button id="startBtn" class="btn gold big">ابدأ الرحلة</button>
+        <button id="startBtn" class="btn gold big shine"><i data-icon="play"></i><span>ابدأ الرحلة</span></button>
       </div>
     </div>
-    <button id="lobbyShow" class="btn small lobby-show hidden">لوحة الغرفة</button>
+    <button id="lobbyShow" class="btn small lobby-show hidden"><i data-icon="users"></i><span>لوحة الغرفة</span></button>
 
     <!-- Role reveal -->
-    <div id="reveal" class="overlay hidden">
+    <div id="reveal" class="overlay rays hidden">
       <div class="reveal-box">
         <div id="revealTitle" class="reveal-title"></div>
         <div id="revealSub" class="reveal-sub"></div>
@@ -119,68 +133,99 @@
       </div>
     </div>
 
+    <!-- Meeting splash -->
+    <div id="splash" class="overlay splash hidden">
+      <div class="splash-burst"></div>
+      <div class="splash-icon" id="splashIcon"></div>
+      <div class="splash-text" id="splashText"></div>
+      <div class="splash-sub" id="splashSub"></div>
+    </div>
+
+    <!-- Knockout scene -->
+    <div id="koScene" class="overlay ko hidden">
+      <div class="ko-stage">
+        <canvas id="koKiller" width="180" height="180"></canvas>
+        <div class="ko-puff">بُوف!</div>
+        <canvas id="koVictim" width="180" height="180"></canvas>
+      </div>
+      <div id="koText" class="ko-text"></div>
+    </div>
+
     <!-- Meeting -->
-    <div id="meeting" class="overlay hidden">
-      <div class="meeting-box">
+    <div id="meeting" class="overlay meeting-wrap hidden">
+      <div class="meeting-box ornate">
         <div class="meeting-head">
-          <div id="meetingTitle" class="meeting-title"></div>
-          <div id="meetingTimer" class="meeting-timer"></div>
+          <div class="meeting-title-wrap">
+            <span id="meetingIcon" class="meeting-icon"></span>
+            <div>
+              <div id="meetingTitle" class="meeting-title"></div>
+              <div id="meetingSub" class="meeting-sub">من الدخيل؟ اختر لاعبًا أو تخطَّ</div>
+            </div>
+          </div>
+          <div class="timer-ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="track"/><circle id="timerArc" cx="22" cy="22" r="19" class="arc"/></svg><b id="meetingTimer"></b></div>
         </div>
         <div id="voteGrid" class="vote-grid"></div>
         <div class="meeting-foot">
-          <button id="skipVote" class="btn">تخطّي التصويت</button>
+          <div id="skipBox" class="skip-box">
+            <button id="skipVote" class="btn"><i data-icon="skip"></i><span>تخطّي التصويت</span></button>
+            <div id="skipVoters" class="voters"></div>
+          </div>
           <div class="chat">
             <ul id="chatLog"></ul>
-            <form id="chatForm"><input id="chatInput" maxlength="140" placeholder="اكتب رسالة…"><button class="btn small">إرسال</button></form>
+            <form id="chatForm"><input id="chatInput" maxlength="140" placeholder="اكتب رسالة…"><button class="btn small" aria-label="إرسال"><i data-icon="chat"></i></button></form>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Eject -->
-    <div id="eject" class="overlay sky hidden">
-      <div class="eject-stage"><canvas id="ejectCanvas" width="240" height="240"></canvas></div>
-      <div id="ejectText" class="eject-text"></div>
-      <div id="ejectSub" class="eject-sub"></div>
+    <div id="eject" class="overlay sky-scene hidden">
+      <canvas id="ejectCanvas"></canvas>
+      <div class="eject-copy">
+        <div id="ejectText" class="eject-text"></div>
+        <div id="ejectSub" class="eject-sub"></div>
+      </div>
     </div>
 
     <!-- End -->
-    <div id="end" class="overlay hidden">
-      <div class="end-box">
+    <div id="end" class="overlay end-wrap hidden">
+      <canvas id="confetti" class="confetti"></canvas>
+      <div class="end-box ornate">
         <div id="endTitle" class="end-title"></div>
         <div id="endReason" class="end-reason"></div>
+        <div id="endWinners" class="end-winners"></div>
         <ul id="endRoles" class="end-roles"></ul>
-        <button id="againBtn" class="btn gold big">العودة إلى الصالة</button>
+        <button id="againBtn" class="btn gold big shine">العودة إلى الصالة</button>
         <p id="endWait" class="muted"></p>
       </div>
     </div>
 
     <!-- Task / fix mini-game -->
     <div id="taskModal" class="overlay dim hidden">
-      <div class="task-box">
-        <div class="task-box-head"><b id="taskTitle"></b><button id="taskClose" class="icon-btn">✕</button></div>
+      <div class="task-box ornate">
+        <div class="box-head"><b id="taskTitle"></b><button id="taskClose" class="round-btn small"><i data-icon="close"></i></button></div>
         <div id="taskBody" class="task-body"></div>
       </div>
     </div>
 
     <!-- Sabotage menu -->
     <div id="sabMenu" class="overlay dim hidden">
-      <div class="task-box">
-        <div class="task-box-head"><b>التخريب</b><button id="sabClose" class="icon-btn">✕</button></div>
+      <div class="task-box ornate">
+        <div class="box-head"><b>التخريب</b><button id="sabClose" class="round-btn small"><i data-icon="close"></i></button></div>
         <div class="sab-grid">
-          <button class="btn" data-sab="lights">💡 إطفاء الأنوار</button>
-          <button class="btn" data-sab="comms">📡 قطع الاتصالات</button>
-          <button class="btn danger" data-sab="fuel">🛢️ تسريب الوقود</button>
+          <button class="sab-card" data-sab="lights"><i data-icon="bulb"></i><span>إطفاء الأنوار</span></button>
+          <button class="sab-card" data-sab="comms"><i data-icon="radio"></i><span>قطع الاتصالات</span></button>
+          <button class="sab-card danger" data-sab="fuel"><i data-icon="fuel"></i><span>تسريب الوقود</span></button>
         </div>
-        <div class="muted">إغلاق الأبواب (١٠ ثوانٍ):</div>
-        <div id="doorGrid" class="sab-grid doors"></div>
+        <div class="eyebrow">إغلاق أبواب غرفة لمدة ١٠ ثوانٍ</div>
+        <div id="doorGrid" class="door-grid"></div>
       </div>
     </div>
 
-    <!-- Map / cameras -->
+    <!-- Map -->
     <div id="mapModal" class="overlay dim hidden">
-      <div class="map-box">
-        <div class="task-box-head"><b id="mapTitle">خريطة طائرة الصقر</b><button id="mapClose" class="icon-btn">✕</button></div>
+      <div class="map-box ornate">
+        <div class="box-head"><b id="mapTitle">خريطة طائرة الصقر</b><button id="mapClose" class="round-btn small"><i data-icon="close"></i></button></div>
         <canvas id="mapCanvas"></canvas>
       </div>
     </div>

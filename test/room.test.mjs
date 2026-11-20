@@ -96,7 +96,7 @@ test("kill respects cooldown and range, leaves a body, and report starts a meeti
 });
 
 test("voting out the only impostor gives the crew the win", () => {
-  const g = setup(5, { discussion: 0 });
+  const g = setup(5);
   const { imps, crew, idx } = startPlaying(g);
   const caller = crew[0];
   caller.x = MAP.button.x; caller.y = MAP.button.y;
@@ -116,7 +116,7 @@ test("voting out the only impostor gives the crew the win", () => {
 });
 
 test("a tie ejects nobody and play resumes", () => {
-  const g = setup(4, { discussion: 0 });
+  const g = setup(4);
   const { crew, imps, idx } = startPlaying(g);
   crew[0].x = MAP.button.x; crew[0].y = MAP.button.y;
   g.clock.advance(11000);
@@ -247,6 +247,16 @@ test("disconnect keeps the seat during a game and rejoining with the token resum
   g.room.connect(late);
   g.room.message(late, JSON.stringify({ t: "hello", token: "new", name: "متأخر" }));
   assert.equal(late.inbox[0].reason, "started");
+});
+
+test("votes count from the first second of a meeting", () => {
+  const g = setup(4);
+  const { crew, idx } = startPlaying(g);
+  crew[0].x = MAP.button.x; crew[0].y = MAP.button.y;
+  g.clock.advance(11000);
+  g.send(idx(crew[0]), { t: "emergency" });
+  g.send(idx(crew[1]), { t: "vote", target: "skip" });
+  assert.equal(crew[1].vote, "skip");
 });
 
 test("host passes on when the host leaves", () => {

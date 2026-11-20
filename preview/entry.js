@@ -6,7 +6,7 @@ let net = null;
 
 function previewHome() {
   document.querySelector(".join-row")?.classList.add("hidden");
-  $("createBtn").textContent = "ابدأ التجربة مع لاعبين آليين";
+  $("createBtn").querySelector("span").textContent = "ابدأ التجربة مع لاعبين آليين";
   const note = document.createElement("p");
   note.className = "preview-note";
   note.textContent = "نسخة تجربة على جهازك: تلعب مع لاعبين آليين يتحركون وينجزون المهام ويصوّتون. النسخة الأونلاين للعائلة تُنشر بعد إنشاء المستودع.";
