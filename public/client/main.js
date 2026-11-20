@@ -75,6 +75,8 @@ function paintAvatar(a, t) {
   drawCharacter(g, 32, 42, a.color, { ...a.opts, scale: (a.opts.scale || 1) * 0.95, t: t + a.seed, seed: a.seed, facing: a.opts.facing ?? 1 });
 }
 function tickAvatars(t) {
+  if (t - avatarAt < (eco ? 1 / 12 : 1 / 24)) return; // portraits breathe slowly; no need for full frame rate
+  avatarAt = t;
   for (const a of liveAvatars) {
     if (!a.canvas.isConnected) { liveAvatars.delete(a); continue; }
     paintAvatar(a, t);
@@ -83,14 +85,28 @@ function tickAvatars(t) {
 
 function show(id, on = true) { $(id).classList.toggle("hidden", !on); }
 
+// ---------- performance: battery saver + frame cap ----------
+// iPhones run screens at up to 120 Hz and heat up quickly; the game is capped at 60 fps everywhere, and battery saver
+// (default on for phones and tablets) drops to 30 fps at native 1x resolution with fewer effects.
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const PHONE = IOS || matchMedia("(pointer: coarse)").matches;
+let eco = (() => { const v = store.get("dakheel-eco"); return v === null ? PHONE : v === "1"; })();
+const fpsCap = () => (eco ? 30 : 60);
+let avatarAt = 0;
+
 // ---------- menu sky (home screen) ----------
 const heroSky = new Sky();
-let heroOn = true;
+let heroOn = true, heroRunning = false, heroLast = 0;
+function startHero() { if (!heroRunning) { heroRunning = true; requestAnimationFrame(heroLoop); } }
 function heroLoop(now) {
+  if (!heroOn) { heroRunning = false; return; }
+  requestAnimationFrame(heroLoop);
+  if (now - heroLast < 1000 / (eco ? 20 : 30) - 2) return;
+  heroLast = now;
   const t = now / 1000;
   const cv = $("heroSky");
-  if (heroOn) {
-    const d = Math.min(2, devicePixelRatio || 1);
+  {
+    const d = eco ? 1 : Math.min(1.5, devicePixelRatio || 1);
     if (cv.width !== Math.round(innerWidth * d)) { cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
     const g = cv.getContext("2d");
     heroSky.draw(g, cv.width, cv.height, t, t * 30, d, 2);
@@ -103,7 +119,6 @@ function heroLoop(now) {
     g.lineTo(cv.width, cv.height); g.fill();
     tickAvatars(t);
   }
-  requestAnimationFrame(heroLoop);
 }
 
 // ---------- home screen ----------
@@ -194,6 +209,7 @@ function leaveToHome(text) {
   $("game").classList.remove("active");
   $("home").classList.add("active");
   heroOn = true;
+  startHero();
   $("heroSky").classList.remove("hidden");
   $("homeMsg").textContent = text || "";
   try { history.replaceState(null, "", location.pathname); } catch { /* sandboxed */ }
@@ -736,6 +752,17 @@ function hudInit() {
   $("taskToggle").onclick = () => $("taskPanel").classList.toggle("collapsed");
   $("soundBtn").innerHTML = icon(isMuted() ? "mute" : "sound");
   $("soundBtn").onclick = () => { $("soundBtn").innerHTML = icon(toggleMute() ? "mute" : "sound"); };
+  const paintEco = () => { $("ecoBtn").innerHTML = icon("leaf"); $("ecoBtn").classList.toggle("on", eco); $("ecoBtn").title = eco ? "توفير البطارية: شغّال" : "توفير البطارية: موقف"; };
+  paintEco();
+  renderer.setEco(eco);
+  $("ecoBtn").onclick = () => {
+    eco = !eco;
+    store.set("dakheel-eco", eco ? "1" : "0");
+    renderer.setEco(eco);
+    visionCache = null;
+    paintEco();
+    toast(eco ? "وضع توفير البطارية: شغّال (أبرد للجوال)" : "وضع توفير البطارية: موقف (أنعم بالحركة)");
+  };
   input.onKey = (k) => {
     if (!S) return;
     if (k === "escape") { closeModal(); show("mapModal", false); show("sabMenu", false); return; }
@@ -1039,12 +1066,17 @@ function drawList(forCams = false) {
 }
 
 let lastFrame = performance.now();
+const COVERS = ["meeting", "eject", "end", "reveal", "splash", "koScene"];
+let visionCache = null;
 function frame(now) {
   requestAnimationFrame(frame);
+  if (now - lastFrame < 1000 / fpsCap() - 2) return; // frame cap
   const dt = Math.min(0.05, (now - lastFrame) / 1000);
   lastFrame = now;
   const t = now / 1000;
   tickAvatars(t);
+  // A full-screen scene covers the ship: keep timers going but don't redraw the world underneath.
+  if (COVERS.some((id) => !$(id).classList.contains("hidden"))) { meetingTimer(); return; }
   if (!S || !me.ready) { renderer.draw(emptyFrame(t, dt)); return; }
 
   const phase = S.phase;
@@ -1062,7 +1094,7 @@ function frame(now) {
     } else {
       const n = moveWithCollision(me.x, me.y, v.x * speed * dt, v.y * speed * dt, doorRects());
       me.x = n.x; me.y = n.y;
-      if (t > me.dustAt) { renderer.fx.dust(me.x, me.y); me.dustAt = t + 0.18; }
+      if (!eco && t > me.dustAt) { renderer.fx.dust(me.x, me.y); me.dustAt = t + 0.18; }
     }
     me.walk += dt * 12;
     if (Math.abs(v.x) > 0.1) me.facing = v.x > 0 ? 1 : -1;
@@ -1081,7 +1113,7 @@ function frame(now) {
     if (o.moving) {
       o.walk += dt * 12;
       if (Math.abs(dx) > 1) o.facing = dx > 0 ? 1 : -1;
-      if (!o.ghost && t > o.dustAt) { renderer.fx.dust(o.x, o.y); o.dustAt = t + 0.22; }
+      if (!eco && !o.ghost && t > o.dustAt) { renderer.fx.dust(o.x, o.y); o.dustAt = t + 0.22; }
     }
     o.face += (o.facing - o.face) * Math.min(1, dt * 14);
     o.x += dx * k; o.y += dy * k;
@@ -1098,7 +1130,10 @@ function frame(now) {
   let vision = null;
   if (playing && !ghost) {
     const r = amImp() ? VISION * 1.4 : lightsOut ? LIGHTS_OFF_VISION : VISION * (S.settings.vision || 1);
-    vision = { x: me.x, y: me.y, r, poly: visionPolygon(me.x, me.y, r, doors) };
+    // The sight shape only changes when you move, the radius changes or a door opens/closes.
+    const key = `${Math.round(me.x / 2)},${Math.round(me.y / 2)},${r},${(S.doorsClosed || []).join()}`;
+    if (!visionCache || visionCache.key !== key) visionCache = { key, poly: visionPolygon(me.x, me.y, r, doors, eco ? 90 : 120) };
+    vision = { x: me.x, y: me.y, r, poly: visionCache.poly };
   }
   const visible = vision ? (x, y) => Math.hypot(x - me.x, y - me.y) <= vision.r && lineClear(me.x, me.y, x, y, doors, 12) : () => true;
 
@@ -1148,7 +1183,7 @@ function startGame() {
 
 // Boot once fonts are ready so painted Arabic labels use the right typeface.
 paintIcons();
-requestAnimationFrame(heroLoop);
+startHero();
 const boot = () => homeInit();
 if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]).then(boot);
 else boot();

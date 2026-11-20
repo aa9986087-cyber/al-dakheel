@@ -374,9 +374,39 @@ function roomOutline(g, r) {
   g.closePath();
 }
 
+/** A soft round glow drawn once per colour and reused for every lamp (instead of a new gradient per lamp per frame). */
+const GLOWS = new Map();
+function glowSprite(color) {
+  let c = GLOWS.get(color);
+  if (!c) {
+    c = makeCanvas(128, 128);
+    const g = c.getContext("2d");
+    const gr = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+    gr.addColorStop(0, `rgba(${color},1)`); gr.addColorStop(1, `rgba(${color},0)`);
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    GLOWS.set(color, c);
+  }
+  return c;
+}
+
 function drawAnim(g, a, t) {
   if (!a.clip) return a.draw(g, t);
   g.save(); g.clip(a.clip); a.draw(g, t); g.restore();
+}
+
+/** Draw the animations near the camera, clipping each room once (not once per animation). */
+function drawAnims(g, t, inView) {
+  let clip = null, open = false;
+  for (const a of ANIMS) { // ANIMS were pushed room by room, so items sharing a clip sit together
+    if (!inView(a)) continue;
+    if (a.clip !== clip) {
+      if (open) { g.restore(); open = false; }
+      clip = a.clip;
+      if (clip) { g.save(); g.clip(clip); open = true; }
+    }
+    a.draw(g, t);
+  }
+  if (open) g.restore();
 }
 
 function porthole(g, x, y) {
@@ -1232,8 +1262,12 @@ export class Renderer {
     addEventListener("resize", () => this.resize());
   }
 
+  /** eco = battery saver: native resolution 1x and no drifting clouds. Phones otherwise cap at 1.5x. */
+  setEco(on) { this.eco = !!on; this.resize(); }
+
   resize() {
-    const dpr = Math.min(2, devicePixelRatio || 1);
+    const touch = matchMedia("(pointer: coarse)").matches;
+    const dpr = this.eco ? 1 : Math.min(touch ? 1.5 : 2, devicePixelRatio || 1);
     const w = innerWidth, h = innerHeight;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
@@ -1241,6 +1275,37 @@ export class Renderer {
     this.fog.height = this.canvas.height;
     this.dpr = dpr;
     this.zoom = Math.max(0.7, Math.min(1.3, Math.min(w, h) / 660)) * dpr;
+    // Things that only change with the screen size are drawn once here, not every frame.
+    this.skyCache = null;
+    const W = this.canvas.width, H = this.canvas.height;
+    this.vignette = makeCanvas(W, H);
+    const vgc = this.vignette.getContext("2d");
+    const vg = vgc.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.45)");
+    vgc.fillStyle = vg; vgc.fillRect(0, 0, W, H);
+  }
+
+  /** Sky behind the ship: gradient, stars and moon cached; only the clouds move. */
+  drawGameSky(g, W, H, t, camX) {
+    if (!this.skyCache || this.skyCache.width !== W || this.skyCache.height !== H) {
+      this.skyCache = makeCanvas(W, H);
+      const sc = this.skyCache.getContext("2d");
+      const clouds = this.sky.clouds;
+      this.sky.clouds = [];
+      this.sky.draw(sc, W, H, 0.4, 0, this.dpr, 0);
+      this.sky.clouds = clouds;
+    }
+    g.drawImage(this.skyCache, 0, 0);
+    if (this.eco) return;
+    g.fillStyle = "#c9d4ff";
+    for (const c of this.sky.clouds) {
+      const par = [0.08, 0.16, 0.3][c.z], span = W * 1.6;
+      const x = (((c.x + t * c.v * 3) * span - camX * par) % span + span) % span - W * 0.3, y = c.y * H;
+      const k = c.s * this.dpr * (1 + c.z * 0.3);
+      g.globalAlpha = [0.1, 0.16, 0.22][c.z];
+      g.beginPath(); g.ellipse(x, y, 120 * k, 30 * k, 0, 0, TAU); g.ellipse(x + 60 * k, y - 16 * k, 70 * k, 28 * k, 0, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
   }
 
   /** World point -> CSS pixel position on screen. */
@@ -1268,7 +1333,7 @@ export class Renderer {
     this.cam = cam;
     CAMS_ON = !!f.camsOn;
     const W = this.canvas.width, H = this.canvas.height;
-    this.sky.draw(g, W, H, t, cam.x, this.dpr, 3);
+    this.drawGameSky(g, W, H, t, cam.x);
 
     g.save();
     this.world(g, cam);
@@ -1276,7 +1341,7 @@ export class Renderer {
     const sx = Math.max(0, cam.x - vw), sy = Math.max(0, cam.y - vh);
     const sw = Math.min(MAP.width, cam.x + vw) - sx, shh = Math.min(MAP.height, cam.y + vh) - sy;
     if (sw > 0 && shh > 0) g.drawImage(this.map, sx, sy, sw, shh, sx, sy, sw, shh);
-    for (const a of ANIMS) if (Math.abs(a.x - cam.x) < vw + a.r && Math.abs(a.y - cam.y) < vh + a.r) drawAnim(g, a, t);
+    drawAnims(g, t, (a) => Math.abs(a.x - cam.x) < vw + a.r && Math.abs(a.y - cam.y) < vh + a.r);
 
     // lantern and window light
     g.globalCompositeOperation = "lighter";
@@ -1284,10 +1349,10 @@ export class Renderer {
       if (Math.abs(l.x - cam.x) > vw + l.r || Math.abs(l.y - cam.y) > vh + l.r) continue;
       const fl = l.flicker != null ? 0.85 + 0.15 * Math.sin(t * 9 + l.flicker) * Math.sin(t * 3.7 + l.flicker * 2) : 1;
       const a = (f.lightsOut ? 0.25 : 1) * l.a * fl;
-      const lg = g.createRadialGradient(l.x, l.y, 4, l.x, l.y, l.r);
-      lg.addColorStop(0, `rgba(${l.color},${a})`); lg.addColorStop(1, `rgba(${l.color},0)`);
-      g.fillStyle = lg; g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+      g.globalAlpha = Math.min(1, a);
+      g.drawImage(glowSprite(l.color), l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
     }
+    g.globalAlpha = 1;
     g.globalCompositeOperation = "source-over";
 
     // doors: carved wooden halves sliding shut
@@ -1328,12 +1393,13 @@ export class Renderer {
       fg.beginPath();
       for (let i = 0; i < pts.length; i += 2) fg.lineTo((pts[i] - cam.x) * this.zoom + W / 2, (pts[i + 1] - cam.y) * this.zoom + H / 2);
       fg.closePath(); fg.fill();
+      // the vignette rides on the fog layer: one full-screen composite instead of two
+      fg.globalCompositeOperation = "source-over";
+      fg.drawImage(this.vignette, 0, 0);
       g.drawImage(this.fog, 0, 0);
+    } else {
+      g.drawImage(this.vignette, 0, 0); // vignette (cached)
     }
-    // vignette
-    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
-    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.45)");
-    g.fillStyle = vg; g.fillRect(0, 0, W, H);
 
     // names and arrows above the fog
     g.save();
@@ -1368,7 +1434,7 @@ export class Renderer {
     g.save();
     g.translate(w / 2, h / 2); g.scale(z, z); g.translate(-cam.x, -cam.y);
     g.drawImage(this.map, 0, 0);
-    for (const a of ANIMS) if (Math.abs(a.x - cam.x) < 300 && Math.abs(a.y - cam.y) < 220) drawAnim(g, a, t);
+    drawAnims(g, t, (a) => Math.abs(a.x - cam.x) < 300 && Math.abs(a.y - cam.y) < 220);
     for (const b of bodies) drawBody(g, b.x, b.y, b.color, t);
     for (const p of players) if (!p.ghost && !p.vented) drawCharacter(g, p.x, p.y, p.color, { ...p, t });
     g.restore();

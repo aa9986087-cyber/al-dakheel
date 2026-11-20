@@ -10,11 +10,41 @@ export function closedDoorRects(closedRooms) {
   return MAP.doors.filter((d) => closedRooms.includes(d.room));
 }
 
+// Walkability grid (8px cells), built once: 0 = wall, 1 = fully walkable, 2 = on an edge (checked exactly).
+// It turns the hot path (vision rays, collision, line of sight) into one array read instead of ~45 rectangle tests.
+const CELL = 8;
+let GRID = null, GW = 0, GH = 0;
+function buildGrid() {
+  GW = Math.ceil(MAP.width / CELL) + 1;
+  GH = Math.ceil(MAP.height / CELL) + 1;
+  GRID = new Uint8Array(GW * GH);
+  for (const r of WALKABLE) {
+    const x0 = Math.floor(r.x / CELL), x1 = Math.floor((r.x + r.w) / CELL);
+    const y0 = Math.floor(r.y / CELL), y1 = Math.floor((r.y + r.h) / CELL);
+    for (let cy = Math.max(0, y0); cy <= Math.min(GH - 1, y1); cy++) {
+      for (let cx = Math.max(0, x0); cx <= Math.min(GW - 1, x1); cx++) {
+        const i = cy * GW + cx;
+        const full = cx * CELL >= r.x && (cx + 1) * CELL <= r.x + r.w && cy * CELL >= r.y && (cy + 1) * CELL <= r.y + r.h;
+        if (full) GRID[i] = 1;
+        else if (GRID[i] === 0) GRID[i] = 2;
+      }
+    }
+  }
+}
+
+function walkableStatic(x, y) {
+  if (!GRID) buildGrid();
+  const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+  if (cx < 0 || cy < 0 || cx >= GW || cy >= GH) return false;
+  const v = GRID[cy * GW + cx];
+  if (v !== 2) return v === 1;
+  for (const r of WALKABLE) if (inRect(r, x, y)) return true;
+  return false;
+}
+
 export function isWalkable(x, y, doors = []) {
-  let ok = false;
-  for (const r of WALKABLE) if (inRect(r, x, y)) { ok = true; break; }
-  if (!ok) return false;
-  for (const d of doors) if (inRect(d, x, y)) return false;
+  if (!walkableStatic(x, y)) return false;
+  for (let i = 0; i < doors.length; i++) if (inRect(doors[i], x, y)) return false;
   return true;
 }
 
