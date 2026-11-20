@@ -157,6 +157,7 @@ function wallFacePattern(g) {
 
 // ---------------------------------------------------------------- world build
 const LIGHTS = []; // {x,y,r,color,flicker}
+let CAMS_ON = false; // someone is watching the security cameras right now
 const ANIMS = []; // {x,y,r,draw(g,t)}
 
 function walkGrid() {
@@ -814,6 +815,40 @@ function drawDecor(g) {
     hanging(r.x + r.w / 2, r.y + r.h - 60);
   }
 
+  // --- Electrical: breaker cabinets with dancing sparks and cable runs
+  if (R.electrical) {
+    const r = R.electrical;
+    for (let i = 0; i < 4; i++) {
+      const x = r.x + 30 + i * 80, y = r.y + 14;
+      rr(g, x, y, 64, 70, 5); fillStroke(g, "#3a3c44", 3);
+      for (let k = 0; k < 3; k++) { g.fillStyle = "#1a1b1f"; g.fillRect(x + 8 + k * 18, y + 12, 12, 26); g.fillStyle = k % 2 ? "#e6a817" : "#5fd4a9"; g.fillRect(x + 8 + k * 18, y + 14 + (i + k) % 3 * 6, 12, 8); }
+      const sx = x + 50, sy = y + 56;
+      ANIMS.push({ x: sx, y: sy, r: 30, draw: (gg, t) => {
+        if (Math.sin(t * 7 + i * 3) < 0.6) return;
+        gg.strokeStyle = "#fff6b0"; gg.lineWidth = 2; gg.beginPath(); gg.moveTo(sx, sy);
+        for (let k = 1; k < 5; k++) gg.lineTo(sx + Math.sin(t * 40 + k) * 9, sy + k * 5);
+        gg.stroke();
+      } });
+    }
+    g.strokeStyle = INK; g.lineWidth = 9; g.beginPath(); g.moveTo(r.x + 20, r.y + r.h - 30); g.bezierCurveTo(r.x + r.w / 3, r.y + r.h - 60, r.x + r.w * 0.6, r.y + r.h - 10, r.x + r.w - 20, r.y + r.h - 40); g.stroke();
+    g.strokeStyle = "#c0392b"; g.lineWidth = 5; g.stroke();
+    LIGHTS.push({ x: r.x + r.w / 2, y: r.y + 60, r: 220, color: "120,200,255", a: 0.14, flicker: 7 });
+  }
+  // --- Security cameras along the passages: a brass dome with a red light that blinks while someone watches
+  for (const c of MAP.cameras) {
+    g.save(); g.translate(c.x, c.y);
+    shadowEllipse(g, 0, 6, 20, 8, 0.3);
+    g.beginPath(); g.arc(0, 0, 16, 0, TAU); fillStroke(g, "#c9973f", 3);
+    g.beginPath(); g.arc(0, 0, 10, 0, TAU); g.fillStyle = "#1a2236"; g.fill();
+    g.fillStyle = "rgba(255,255,255,.5)"; g.beginPath(); g.arc(-3, -3, 3, 0, TAU); g.fill();
+    g.restore();
+    ANIMS.push({ x: c.x, y: c.y, r: 30, draw: (gg, t) => {
+      const on = CAMS_ON && Math.sin(t * 8) > -0.2;
+      gg.fillStyle = on ? "#ff3b3b" : "#5a1a1a"; gg.beginPath(); gg.arc(c.x + 11, c.y - 11, 4.5, 0, TAU); gg.fill();
+      if (on) { gg.fillStyle = "rgba(255,60,60,.25)"; gg.beginPath(); gg.arc(c.x + 11, c.y - 11, 12, 0, TAU); gg.fill(); }
+    } });
+  }
+
   // Corridor lanterns, spaced along every long passage
   for (const c of MAP.corridors) {
     const horiz = c.w >= c.h;
@@ -1162,6 +1197,7 @@ export class Renderer {
     const sh = this.shake * 10;
     const cam = { x: f.cam.x + (Math.random() - 0.5) * sh, y: f.cam.y + (Math.random() - 0.5) * sh };
     this.cam = cam;
+    CAMS_ON = !!f.camsOn;
     const W = this.canvas.width, H = this.canvas.height;
     this.sky.draw(g, W, H, t, cam.x, this.dpr, 3);
 

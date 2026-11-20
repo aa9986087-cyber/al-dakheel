@@ -353,7 +353,8 @@ body.is-imp .imp-only { display: grid; }
 .mg-entry { font-size: 1.6rem; letter-spacing: 8px; min-height: 2rem; direction: ltr; color: #7ff0c5; }
 .mg-entry.bad { animation: shake .3s; color: var(--red); }
 .mg-pour { width: 100%; max-width: 360px; aspect-ratio: 360 / 220; display: block; }
-.mg-cams { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+.mg-cams { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+@media (max-width: 640px) { .mg-cams { grid-template-columns: 1fr 1fr; } }
 .mg-cams figure { margin: 0; position: relative; }
 .mg-cams canvas { width: 100%; border-radius: 10px; border: 2px solid var(--gold3); display: block; background: #000; }
 .mg-cams figcaption { position: absolute; top: 6px; right: 8px; font-size: .75rem; background: rgba(0,0,0,.65); padding: 1px 8px; border-radius: 6px; }

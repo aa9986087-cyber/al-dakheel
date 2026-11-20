@@ -443,11 +443,11 @@ function lobbyInit() {
 // ---------- HUD ----------
 function sabText(sab) {
   if (!sab) return "";
-  if (sab.kind === "lights") return "الأنوار مطفأة! أصلحها من غرفة المولدات";
+  if (sab.kind === "lights") return "الأنوار مطفأة! أصلحها من غرفة الكهرباء";
   if (sab.kind === "comms") return "الاتصالات مقطوعة! أصلحها من غرفة الاتصالات";
   if (sab.kind === "fuel") {
     const left = Math.max(0, Math.ceil((sab.endsAt - serverNow()) / 1000));
-    return `خلل في المفاعل! ${ar(left)} ث — أمسكوا لوحتي المفاعل معًا [${ar(sab.a || 0)}/${ar(sab.b || 0)}]`;
+    return `خلل في المحرك الرئيسي! ${ar(left)} ث — أمسكوا لوحتي المحرك معًا [${ar(sab.a || 0)}/${ar(sab.b || 0)}]`;
   }
   return "";
 }
@@ -545,7 +545,7 @@ function use() {
   else if (u.kind === "bell") {
     if (serverNow() < S.buttonReadyAt) return toast(`الجرس جاهز بعد ${ar(Math.ceil((S.buttonReadyAt - serverNow()) / 1000))} ث`);
     if (S.emergenciesLeft <= 0) return toast("استهلكت اجتماعات الطوارئ");
-    if (S.sab?.kind === "fuel") return toast("لا يمكن قرع الجرس أثناء خلل المفاعل!");
+    if (S.sab?.kind === "fuel") return toast("لا يمكن قرع الجرس أثناء خلل المحرك!");
     net.send({ t: "emergency" });
   }
 }
@@ -599,8 +599,8 @@ function openFix(kind) {
 }
 
 function openFuel(panel) {
-  const m = openModal("fuel", "تثبيت المفاعل", (body) => {
-    body.innerHTML = `<div class="mg-note">اضغط مطوّلاً على اللوحة، ولاعب آخر يمسك اللوحة الثانية على ${panel === "A" ? "الجهة اليمنى" : "الجهة اليسرى"} من المفاعل في نفس الوقت</div>`;
+  const m = openModal("fuel", "تثبيت المحرك الرئيسي", (body) => {
+    body.innerHTML = `<div class="mg-note">اضغط مطوّلاً على اللوحة، ولاعب آخر يمسك اللوحة الثانية على الجهة الأخرى من المحرك في نفس الوقت</div>`;
     const b = document.createElement("button");
     b.className = "mg-hold"; b.innerHTML = icon("use");
     b.firstChild.style.cssText = "width:70px;height:70px";
@@ -620,6 +620,7 @@ function openFuel(panel) {
 }
 
 function openCams() {
+  net.send({ t: "cams", on: true });
   openModal("cams", "كاميرات المراقبة", (body) => {
     const grid = document.createElement("div");
     grid.className = "mg-cams";
@@ -638,8 +639,9 @@ function openCams() {
       raf = requestAnimationFrame(loop);
     };
     loop();
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); net?.send({ t: "cams", on: false }); };
   });
+  document.querySelector("#taskModal .task-box").style.width = "min(1000px, 100%)";
 }
 
 /** Admin table: a live map with an anonymous figure per person in each room. Off while comms are cut. */
@@ -1128,7 +1130,7 @@ function frame(now) {
   renderer.draw({
     cam, t, dt,
     players: drawList(), bodies: playing ? S.bodies || [] : [],
-    vision, visible, highlights, arrows: arrows.slice(0, 8), doors: doorFrames, lightsOut
+    vision, visible, highlights, arrows: arrows.slice(0, 8), doors: doorFrames, lightsOut, camsOn: playing && !!S.camsOn
   });
 
   updateActions();

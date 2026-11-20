@@ -49,6 +49,7 @@ export class Room {
     if (!p || p.conn !== conn) return;
     p.conn = null;
     p.connected = false;
+    p.watching = false;
     p.disconnectedAt = this.now();
     this.releaseHolds(p);
     if (p.host) this.passHost();
@@ -275,6 +276,7 @@ export class Room {
     for (const p of this.players.values()) {
       p.vent = null;
       p.vote = undefined;
+      p.watching = false;
       if (!p.alive) p.knownDead = true;
     }
     const alive = this.living();
@@ -373,7 +375,7 @@ export class Room {
         for (const id of s.holdA) { const p = this.players.get(id); if (!p || !p.alive || !this.near(p, MAP.fixes.fuelA, USE_RANGE + 30)) s.holdA.delete(id); }
         for (const id of s.holdB) { const p = this.players.get(id); if (!p || !p.alive || !this.near(p, MAP.fixes.fuelB, USE_RANGE + 30)) s.holdB.delete(id); }
         if (s.holdA.size && s.holdB.size) { this.sab = null; this.dirty = true; }
-        else if (now >= s.endsAt) this.finish("imp", "خرج المفاعل عن السيطرة قبل إصلاحه");
+        else if (now >= s.endsAt) this.finish("imp", "تعطّل المحرك الرئيسي قبل إصلاحه");
       }
     } else if (this.phase === "meeting") {
       if (now >= this.meeting.voteEndsAt) this.resolveVotes();
@@ -431,6 +433,7 @@ export class Room {
     v.emergenciesLeft = Math.max(0, this.settings.emergencies - me.emergencies);
     v.buttonReadyAt = this.buttonReadyAt;
     v.doorsClosed = this.closedRooms();
+    v.camsOn = [...this.players.values()].some((x) => x.watching && x.connected && !x.left);
     v.vent = me.vent;
     if (this.sab) {
       v.sab = { kind: this.sab.kind, endsAt: this.sab.endsAt || 0 };
@@ -620,6 +623,13 @@ const HANDLERS = {
     set.add(p.id);
     if (s.holdA.size && s.holdB.size) this.sab = null;
     this.dirty = true;
+  },
+
+  /** Watching the security cameras: everyone sees the camera lights blink while someone watches. */
+  cams(p, msg) {
+    if (this.phase !== "play" || p.left) return;
+    const on = !!msg.on && this.near(p, MAP.console, USE_RANGE + 60);
+    if (p.watching !== on) { p.watching = on; this.dirty = true; }
   },
 
   vent(p, msg) {

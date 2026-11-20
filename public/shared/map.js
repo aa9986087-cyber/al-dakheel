@@ -27,15 +27,15 @@ const T = (o) => T0(R90(o));
 
 const rooms = [
   { id: "engines", name: "المحرك الرئيسي", x: 392, y: 150, w: 326, h: 185, cut: 45, floor: "metal" },
-  { id: "generator", name: "المولدات", x: 205, y: 310, w: 187, h: 185, floor: "copper" },
+  { id: "generator", name: "المولدات", x: 205, y: 310, w: 187, h: 185, floor: "metal" },
   { id: "guard", name: "برج الحراسة", x: 718, y: 310, w: 200, h: 190, floor: "night" },
   { id: "security", name: "المراقبة", x: 460, y: 500, w: 215, h: 100, floor: "night" },
-  { id: "baggage", name: "الأمتعة", x: 255, y: 700, w: 235, h: 115, floor: "planks" },
+  { id: "electrical", name: "الكهرباء", x: 255, y: 700, w: 235, h: 115, floor: "copper" },
   { id: "medbay", name: "العيادة", x: 518, y: 610, w: 227, h: 195, floor: "marble" },
-  { id: "reactor", name: "المفاعل", x: 70, y: 820, w: 385, h: 290, cut: 70, floor: "metal" },
+  { id: "baggage", name: "الأمتعة", x: 70, y: 820, w: 385, h: 290, cut: 70, floor: "planks" },
   { id: "majlis", name: "المجلس", x: 570, y: 820, w: 450, h: 470, cut: 110, floor: "carpet" },
   { id: "air", name: "غرفة الهواء", x: 70, y: 1150, w: 175, h: 190, floor: "teal" },
-  { id: "storage", name: "المخزن", x: 340, y: 1150, w: 185, h: 190, floor: "planks" },
+  { id: "admin", name: "الإدارة", x: 340, y: 1150, w: 185, h: 190, floor: "cockpit" },
   { id: "kitchen", name: "الضيافة", x: 540, y: 1300, w: 150, h: 140, floor: "terracotta" },
   { id: "gear", name: "مخزن العتاد", x: 700, y: 1370, w: 240, h: 160, floor: "wood" },
   { id: "engineB", name: "المحرك الاحتياطي", x: 165, y: 1375, w: 205, h: 180, floor: "metal" },
@@ -70,20 +70,21 @@ const corridors = [
 ];
 
 const tasks = [
-  { id: "engineFuel", name: "تعبئة المحرك", room: "engines", x: 450, y: 250, type: "hold" },
+  { id: "engineFuel", name: "تعبئة المحرك", room: "engines", x: 555, y: 300, type: "hold" },
   { id: "filter", name: "تنظيف المرشح", room: "engines", x: 660, y: 300, type: "clicks" },
-  { id: "wires", name: "إصلاح الأسلاك", room: "generator", x: 240, y: 340, type: "wires" },
-  { id: "power", name: "توزيع الطاقة", room: "generator", x: 355, y: 465, type: "switches" },
+  { id: "cooling", name: "تبريد المولد", room: "generator", x: 240, y: 340, type: "slider" },
+  { id: "genFuel", name: "تزويد المولد بالوقود", room: "generator", x: 355, y: 465, type: "hold" },
+  { id: "wires", name: "إصلاح الأسلاك", room: "electrical", x: 300, y: 735, type: "wires" },
+  { id: "power", name: "توزيع الطاقة", room: "electrical", x: 455, y: 790, type: "switches" },
   { id: "charge", name: "شحن البطاريات", room: "guard", x: 890, y: 340, type: "hold" },
   { id: "radar", name: "ضبط الرادار", room: "guard", x: 760, y: 470, type: "slider" },
   { id: "scan", name: "الفحص الطبي", room: "medbay", x: 630, y: 720, type: "scan" },
   { id: "locks", name: "تحديث الأقفال", room: "security", x: 640, y: 570, type: "code" },
-  { id: "sortBags", name: "فرز الأمتعة", room: "baggage", x: 455, y: 790, type: "sequence" },
-  { id: "calibrate", name: "معايرة المفاعل", room: "reactor", x: 260, y: 1075, type: "slider" },
+  { id: "sortBags", name: "فرز الأمتعة", room: "baggage", x: 260, y: 1075, type: "sequence" },
   { id: "incense", name: "إشعال البخور", room: "majlis", x: 610, y: 1110, type: "clicks" },
   { id: "airClean", name: "تنقية الهواء", room: "air", x: 110, y: 1190, type: "clicks" },
   { id: "valves", name: "ضبط الصمامات", room: "air", x: 215, y: 1310, type: "switches" },
-  { id: "cargo", name: "ترتيب الشحنة", room: "storage", x: 490, y: 1310, type: "sequence" },
+  { id: "upload", name: "تحميل البيانات", room: "admin", x: 490, y: 1310, type: "hold" },
   { id: "coffee", name: "تحضير القهوة", room: "kitchen", x: 575, y: 1330, type: "pour" },
   { id: "dates", name: "تقديم التمر", room: "kitchen", x: 660, y: 1405, type: "sequence" },
   { id: "openLocker", name: "فتح الخزائن", room: "gear", x: 910, y: 1400, type: "code" },
@@ -98,7 +99,7 @@ const vents = [
   { id: "vGuard", x: 880, y: 470, links: ["vEng", "vGen"] },
   { id: "vSec", x: 490, y: 580, links: ["vMed", "vBag"] },
   { id: "vMed", x: 720, y: 640, links: ["vSec", "vBag"] },
-  { id: "vBag", x: 290, y: 725, links: ["vSec", "vMed"] },
+  { id: "vBag", x: 470, y: 720, links: ["vSec", "vMed"] },
   { id: "vReact", x: 100, y: 1000, links: ["vAir", "vEngB"] },
   { id: "vAir", x: 210, y: 1180, links: ["vReact", "vEngB"] },
   { id: "vEngB", x: 340, y: 1405, links: ["vReact", "vAir"] },
@@ -114,18 +115,21 @@ const base = {
   spawn: T({ x: 795, y: 1055 }),
   button: T({ x: 795, y: 1055 }),
   console: T({ x: 530, y: 540 }), // security cameras
-  admin: T({ x: 575, y: 1770 }), // live map table on the bridge
+  admin: T({ x: 432, y: 1235 }), // live map table in the admin room
+  // Cameras along the passages; the security console shows all of them.
   cameras: [
-    { name: "الممر الأيسر", ...T({ x: 300, y: 610 }) },
-    { name: "الممر الأيمن", ...T({ x: 800, y: 650 }) },
-    { name: "ممر المفاعل", ...T({ x: 510, y: 995 }) },
-    { name: "الممر السفلي", ...T({ x: 530, y: 1475 }) }
+    { name: "ممر المولدات", ...T({ x: 200, y: 700 }) },
+    { name: "قاعة المحرك", ...T({ x: 600, y: 425 }) },
+    { name: "ممر الحراسة", ...T({ x: 800, y: 660 }) },
+    { name: "ممر الأمتعة", ...T({ x: 510, y: 995 }) },
+    { name: "الممر السفلي", ...T({ x: 450, y: 1475 }) },
+    { name: "ممر العتاد", ...T({ x: 850, y: 1330 }) }
   ],
   fixes: {
-    lights: { ...T({ x: 230, y: 470 }), room: "generator" },
+    lights: { ...T({ x: 375, y: 790 }), room: "electrical" },
     comms: { ...T({ x: 500, y: 1550 }), room: "comms" },
-    fuelA: { ...T({ x: 100, y: 960 }), room: "reactor" },
-    fuelB: { ...T({ x: 425, y: 960 }), room: "reactor" }
+    fuelA: { ...T({ x: 440, y: 235 }), room: "engines" }, // critical: both engine panels held together
+    fuelB: { ...T({ x: 675, y: 235 }), room: "engines" }
   },
   propellers: [T0({ x: 105, y: 470 }), T0({ x: 105, y: 620 })] // behind the main engine (already in turned space)
 };

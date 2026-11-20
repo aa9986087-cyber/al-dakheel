@@ -259,6 +259,22 @@ test("votes count from the first second of a meeting", () => {
   assert.equal(crew[1].vote, "skip");
 });
 
+test("camera lights: on while someone watches at the console, off after", () => {
+  const g = setup(4);
+  const { crew, idx } = startPlaying(g);
+  const c = crew[0];
+  g.send(idx(c), { t: "cams", on: true });
+  g.room.tick();
+  assert.equal(g.lastState(idx(crew[1])).camsOn, false, "too far from the console");
+  Object.assign(c, MAP.console);
+  g.send(idx(c), { t: "cams", on: true });
+  g.room.tick();
+  assert.equal(g.lastState(idx(crew[1])).camsOn, true);
+  g.send(idx(c), { t: "cams", on: false });
+  g.room.tick();
+  assert.equal(g.lastState(idx(crew[1])).camsOn, false);
+});
+
 test("host passes on when the host leaves", () => {
   const g = setup(3);
   g.room.disconnect(g.conns[0]);
