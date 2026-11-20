@@ -656,17 +656,12 @@ function openAdmin() {
     let raf;
     const loop = () => {
       const down = S?.sab?.kind === "comms";
-      note.textContent = down ? "الاتصالات مقطوعة — الخريطة لا تعمل" : "عدد الأشخاص في كل غرفة الآن";
+      note.textContent = down ? "الاتصالات مقطوعة — أصلحها لتعود الخريطة" : "كل رمز أصفر شخص موجود في الغرفة الآن (بدون أسماء)";
       const counts = new Map();
       const people = [...others.values()].filter((o) => !o.ghost && !o.vented);
       if (amAlive() && !S.vent) people.push(me);
       for (const o of people) { const r = roomAt(o.x, o.y); if (r) counts.set(r.id, (counts.get(r.id) || 0) + 1); }
-      const markers = [];
-      if (!down) for (const r of MAP.rooms) {
-        const n = counts.get(r.id) || 0;
-        for (let i = 0; i < n; i++) markers.push({ x: r.x + r.w / 2 + (i - (n - 1) / 2) * 46, y: r.y + r.h / 2 + 40, color: "#e9e3d6", r: 15 });
-      }
-      renderer.drawOverview(cv, markers, performance.now() / 1000);
+      renderer.drawAdmin(cv, counts, performance.now() / 1000, down);
       raf = requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
