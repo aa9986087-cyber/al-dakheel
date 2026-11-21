@@ -8,12 +8,19 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/ws/*", "/api/*"]
+    "run_worker_first": ["/ws/*", "/api/*", "/mafia/*"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+    "bindings": [
+      { "name": "ROOMS", "class_name": "GameRoom" },
+      // Rooms of the Mafia game (its pages are on GitHub Pages; see the mafia repository)
+      { "name": "MAFIA", "class_name": "MafiaGame" }
+    ]
   },
   // SQLite-backed Durable Objects are the ones available on the free plan.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["MafiaGame"] }
+  ],
   "observability": { "enabled": true }
 }

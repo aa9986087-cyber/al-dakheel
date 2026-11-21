@@ -6,6 +6,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { Room } from "./room.js";
+import { MafiaRoom, MAFIA_TICK_MS } from "./mafia/room.js";
 import { TICK_MS, normalizeCode, isValidCode, randomCode } from "../public/shared/config.js";
 
 const ROOT = fileURLToPath(new URL("../public/", import.meta.url));
@@ -50,9 +51,32 @@ export function startServer({ port = 8787, host = "0.0.0.0", log = true } = {}) 
     }
   });
 
+  const mafiaRooms = new Map();
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url, "http://x");
+    const mf = url.pathname.match(/^\/mafia\/ws\/([A-Za-z0-9]+)$/);
+    if (mf) {
+      const code = normalizeCode(mf[1]);
+      if (!isValidCode(code)) return socket.destroy();
+      return wss.handleUpgrade(req, socket, head, (ws) => {
+        const create = url.searchParams.get("create") === "1";
+        let room = mafiaRooms.get(code);
+        const fail = (reason) => { ws.send(JSON.stringify({ t: "error", reason })); ws.close(); };
+        if (!room && !create) return fail("not_found");
+        if (room && create && room.players.size) return fail("exists");
+        if (!room) {
+          room = new MafiaRoom(code);
+          room.timer = setInterval(() => { room.tick(); if (room.isDead()) { clearInterval(room.timer); mafiaRooms.delete(code); } }, MAFIA_TICK_MS);
+          mafiaRooms.set(code, room);
+        }
+        const conn = { send: (s) => ws.readyState === 1 && ws.send(s), close: () => ws.close() };
+        room.connect(conn);
+        ws.on("message", (data) => room.message(conn, data.toString()));
+        ws.on("close", () => room.disconnect(conn));
+        ws.on("error", () => room.disconnect(conn));
+      });
+    }
     const m = url.pathname.match(/^\/ws\/([A-Za-z0-9]+)$/);
     const code = m && normalizeCode(m[1]);
     if (!code || !isValidCode(code)) return socket.destroy();
@@ -78,6 +102,7 @@ export function startServer({ port = 8787, host = "0.0.0.0", log = true } = {}) 
         port: actual, rooms,
         close: () => new Promise((r) => {
           for (const room of rooms.values()) clearInterval(room.timer);
+          for (const room of mafiaRooms.values()) clearInterval(room.timer);
           for (const c of wss.clients) c.terminate();
           server.close(r);
         })
