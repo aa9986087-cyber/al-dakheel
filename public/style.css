@@ -30,6 +30,12 @@ button, input { font: inherit; color: inherit; }
    fields keep 16px text so focusing them does not zoom the page. Elements that set their own
    touch-action (the game canvas, the joystick) keep it. */
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* iPhone: no rubber-band bounce of the whole page, no text selection or magnifier on a long press
+   (fields excepted), and text fields without Safari's own rounded inner styling. */
+html, body { overscroll-behavior: none; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea { -webkit-appearance: none; appearance: none; }
 button, .swatch, .vote-card, .card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea, select { font-size: max(16px, 1em); }
 button { cursor: pointer; }
@@ -99,7 +105,8 @@ input:focus { border-color: var(--gold2); }
 
 /* ---------- home ---------- */
 #home { overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
-#home.active { display: grid; place-items: center; }
+#home.active { display: grid; justify-items: center; align-items: start; }
+#home.active > .home-wrap { margin-block: auto; } /* centred, yet the top stays reachable on short phones */
 .home-wrap { width: min(520px, 100%); display: grid; gap: 14px; }
 .brand { text-align: center; animation: drop .9s cubic-bezier(.2,1.4,.4,1) both; }
 .brand-mark { width: 78px; height: 78px; margin: 0 auto; border-radius: 50%; background: url("icon.svg") center/cover; filter: drop-shadow(0 6px 18px rgba(217,166,72,.45)); animation: float 4s ease-in-out infinite; }
@@ -158,7 +165,7 @@ input:focus { border-color: var(--gold2); }
 
 .joystick { position: absolute; bottom: max(26px, env(safe-area-inset-bottom)); left: max(22px, env(safe-area-inset-left)); width: 136px; height: 136px; border-radius: 50%; background: radial-gradient(circle, rgba(217,166,72,.06), rgba(217,166,72,.16)); border: 2px solid rgba(217,166,72,.45); display: none; touch-action: none; box-shadow: inset 0 0 20px rgba(0,0,0,.4); }
 .joystick::before { content: ""; position: absolute; inset: 14px; border-radius: 50%; border: 1px dashed rgba(217,166,72,.3); }
-.joystick .knob { position: absolute; width: 58px; height: 58px; left: 37px; top: 37px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fbe2a0, #c9973f 55%, #7a5520); border: 2px solid var(--ink); box-shadow: 0 6px 14px rgba(0,0,0,.55); transition: transform .05s; }
+.joystick .knob { position: absolute; width: 58px; height: 58px; left: calc(50% - 29px); top: calc(50% - 29px); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fbe2a0, #c9973f 55%, #7a5520); border: 2px solid var(--ink); box-shadow: 0 6px 14px rgba(0,0,0,.55); transition: transform .05s; }
 body.touch .joystick { display: block; }
 
 .actions { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, auto); gap: 10px; direction: ltr; justify-items: center; align-items: end; }
@@ -423,3 +430,18 @@ body.is-imp .imp-only { display: grid; }
 .leave-box { max-width: 360px; margin: auto; padding: 22px; text-align: center; display: grid; gap: 12px; }
 .leave-box h3 { margin: 0; color: var(--gold2); }
 .leave-box .row { display: flex; gap: 8px; justify-content: center; }
+
+/* Narrow phones (iPhone SE/mini, small Androids): the joystick and the three action buttons must fit side by
+   side, or the impostor's buttons land on top of the joystick. */
+@media (max-width: 420px) {
+  .joystick { width: 118px; height: 118px; left: max(14px, env(safe-area-inset-left)); }
+  .actions { gap: 8px; right: max(10px, env(safe-area-inset-right)); }
+  .act { width: 62px; height: 62px; }
+  .act .ico { width: 28px; height: 28px; }
+  .act span { font-size: .66rem; }
+}
+@media (max-width: 350px) {
+  .joystick { width: 104px; height: 104px; left: max(10px, env(safe-area-inset-left)); }
+  .actions { gap: 6px; right: max(8px, env(safe-area-inset-right)); }
+  .act { width: 56px; height: 56px; }
+}

@@ -5,9 +5,14 @@ try { muted = localStorage.getItem("dakheel-muted") === "1"; } catch { /* storag
 
 function ac() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (ctx.state === "suspended") ctx.resume();
+  if (ctx.state === "suspended" || ctx.state === "interrupted") ctx.resume().catch(() => {});
   return ctx;
 }
+// Bring the sound back after the phone was locked, a call came in or the tab was in the background.
+const wake = () => { if (ctx && ctx.state !== "running" && !document.hidden) ctx.resume().catch(() => {}); };
+addEventListener("touchend", wake, { passive: true });
+addEventListener("pointerdown", wake, { passive: true });
+document.addEventListener("visibilitychange", wake);
 
 function tone(freq, dur, { type = "sine", vol = 0.15, at = 0, slide = 0 } = {}) {
   if (muted) return;

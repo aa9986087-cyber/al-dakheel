@@ -19,6 +19,25 @@ export function shade(hex, f) {
   return `rgb(${r},${g},${b})`;
 }
 
+// iPhones on iOS 15 and older have no canvas roundRect; without it the whole map fails to draw.
+if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r = 0) {
+    let rad = Array.isArray(r) ? r[0] ?? 0 : r;
+    if (typeof rad === "object") rad = rad.x ?? 0;
+    rad = Math.max(0, Math.min(rad, Math.abs(w) / 2, Math.abs(h) / 2));
+    this.moveTo(x + rad, y);
+    this.arcTo(x + w, y, x + w, y + h, rad);
+    this.arcTo(x + w, y + h, x, y + h, rad);
+    this.arcTo(x, y + h, x, y, rad);
+    this.arcTo(x, y, x + w, y, rad);
+    this.closePath();
+  };
+}
+
+/** Give a canvas's memory back at once. Safari keeps it until garbage collection otherwise, and iPhones
+ *  have a hard cap on total canvas memory: going over it leaves the game screen blank. */
+function freeCanvas(c) { if (c) { c.width = 0; c.height = 0; } }
+
 function makeCanvas(w, h) {
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
@@ -227,6 +246,7 @@ function buildWorldOnce() {
     f.filter = "blur(16px)"; f.globalAlpha = 0.75; f.drawImage(m, 0, 10);
     f.filter = "blur(4px)"; f.globalAlpha = 0.5; f.drawImage(m, 0, 2);
     f.restore();
+    freeCanvas(m);
   }
   // runner rugs along every long corridor
   for (const r of MAP.corridors) {
@@ -245,6 +265,7 @@ function buildWorldOnce() {
     f.restore();
   }
   g.drawImage(fl, 0, 0);
+  freeCanvas(fl);
 
   // --- tall wall faces above every top edge of walkable space
   const face = wallFacePattern(g);
@@ -1281,6 +1302,7 @@ export class Renderer {
     // Things that only change with the screen size are drawn once here, not every frame.
     this.skyCache = null;
     const W = this.canvas.width, H = this.canvas.height;
+    freeCanvas(this.vignette); freeCanvas(this.skyCache);
     this.vignette = makeCanvas(W, H);
     const vgc = this.vignette.getContext("2d");
     const vg = vgc.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);

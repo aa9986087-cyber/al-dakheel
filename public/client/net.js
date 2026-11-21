@@ -39,9 +39,11 @@ export class Net {
       this.send({ t: "hello", ...this.hello() });
       this.ping();
       clearInterval(this.pinger);
-      this.pinger = setInterval(() => this.ping(), 5000);
+      this.lastMsgAt = Date.now();
+      this.pinger = setInterval(() => { this.ping(); this.checkAlive(); }, 5000);
     };
     ws.onmessage = (e) => {
+      this.lastMsgAt = Date.now();
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.t === "pong") return this.pong(msg);
@@ -49,12 +51,28 @@ export class Net {
       this.onMessage(msg);
     };
     ws.onclose = () => {
+      if (ws !== this.ws) return; // an older socket we already replaced
       clearInterval(this.pinger);
       if (this.closed) return;
       this.onStatus?.("lost");
       const delay = Math.min(5000, 400 * 2 ** this.tries++);
-      setTimeout(() => !this.closed && this.open(), delay);
+      this.retry = setTimeout(() => !this.closed && this.open(), delay);
     };
+  }
+
+  /** iPhone Safari can keep a socket "open" after the phone slept even though it is dead. Positions arrive
+   *  several times a second, so a long silence means the link is gone: close it and reconnect. */
+  checkAlive() {
+    if (this.closed || !this.ws || this.ws.readyState !== 1) return;
+    if (Date.now() - (this.lastMsgAt || 0) > 12000) { try { this.ws.close(); } catch { /* reconnects below */ } }
+  }
+
+  /** Back from the background: check the link at once instead of waiting for the next ping. */
+  wake() {
+    if (this.closed) return;
+    if (!this.ws || this.ws.readyState > 1) { clearTimeout(this.retry); this.open(); return; }
+    this.ping();
+    setTimeout(() => this.checkAlive(), 3000);
   }
 
   send(msg) {

@@ -37,6 +37,28 @@ let modal = null; // { kind, cleanup }
 let prevPhase = null;
 let pendingVote = null;
 let wantBots = 0; // bots to add once the room we just created answers
+
+// ---------- iPhone Safari guards ----------
+// Safari ignores user-scalable=no: a pinch or a quick double tap would zoom the whole game and leave it
+// zoomed. Text fields keep their normal behaviour.
+const typing = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+for (const type of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 320 && !typing(e.target) && e.cancelable) {
+    // A second tap this soon is a zoom gesture to Safari; keep it a tap by clicking it ourselves.
+    e.preventDefault();
+    const btn = e.target.closest?.("button:not([disabled]), .swatch, .vote-card");
+    btn?.click();
+  }
+  lastTouchEnd = now;
+}, { passive: false });
+// Coming back to the tab (after locking the phone or switching apps): check the room link right away.
+const wakeNet = () => { if (!document.hidden) net?.wake?.(); };
+document.addEventListener("visibilitychange", wakeNet);
+addEventListener("pageshow", wakeNet);
 let meetingShownAt = 0;
 let seenStamps = new Set();
 let profile = { name: store.get("dakheel-name") || "", color: store.get("dakheel-color") || COLORS[0].id };
@@ -108,7 +130,7 @@ function heroLoop(now) {
   const cv = $("heroSky");
   {
     const d = eco ? 1 : Math.min(1.5, devicePixelRatio || 1);
-    if (cv.width !== Math.round(innerWidth * d)) { cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
+    if (cv.width !== Math.round(innerWidth * d) || cv.height !== Math.round(innerHeight * d)) { cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
     const g = cv.getContext("2d");
     heroSky.draw(g, cv.width, cv.height, t, t * 30, d, 2);
     const s = Math.min(cv.width / 1100, cv.height / 900) * 1.05;
@@ -993,7 +1015,7 @@ function startEject() {
   const loop = (now) => {
     const t = (now - t0) / 1000;
     const d = Math.min(2, devicePixelRatio || 1);
-    if (cv.width !== Math.round(innerWidth * d)) { cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
+    if (cv.width !== Math.round(innerWidth * d) || cv.height !== Math.round(innerHeight * d)) { cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
     const g = cv.getContext("2d");
     ejectSky.draw(g, cv.width, cv.height, now / 1000, t * 600, d, 6);
     drawAirship(g, cv.width * 0.85 - t * 40 * d, cv.height * 0.28, Math.min(cv.width, cv.height) / 2400, now / 1000);
