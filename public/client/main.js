@@ -43,7 +43,25 @@ let wantBots = 0; // bots to add once the room we just created answers
 // zoomed. Text fields keep their normal behaviour.
 const typing = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 for (const type of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
-document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+const scrollerOf = (el) => {
+  for (; el && el !== document.body; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
+  }
+  return null;
+};
+document.addEventListener("touchstart", (e) => {
+  // Nudge a scroll area off its very top/bottom, so Safari scrolls it instead of dragging the page.
+  const sc = scrollerOf(e.target);
+  if (!sc) return;
+  if (sc.scrollTop <= 0) sc.scrollTop = 1;
+  else if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight) sc.scrollTop = sc.scrollHeight - sc.clientHeight - 1;
+}, { passive: true });
+document.addEventListener("touchmove", (e) => {
+  if (e.touches.length > 1) { e.preventDefault(); return; }
+  // Only real scroll areas move; anything else (the page, a fixed panel) stays put.
+  if (!scrollerOf(e.target) && e.cancelable && !e.target.closest?.(".joystick, .task-body, input, textarea, #mapCanvas")) e.preventDefault();
+}, { passive: false });
 let lastTouchEnd = 0;
 document.addEventListener("touchend", (e) => {
   const now = Date.now();

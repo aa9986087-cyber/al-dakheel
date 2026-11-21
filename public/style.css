@@ -461,3 +461,14 @@ body.is-imp .imp-only { display: grid; }
   #mapCanvas { width: auto; max-width: 100%; max-height: calc(100vh - 110px); justify-self: center; }
   .meeting-box { padding: 10px 12px; }
 }
+
+/* Panels that scroll (lobby, voting, map, overlays) must only scroll up and down. Their corner diamonds and
+   long names made them a little wider than the screen, so on iPhone a finger dragged them sideways and off
+   screen. The diamonds sit inside the panels that scroll, and scrolling never spills onto the page. */
+.lobby, .meeting-box, .map-box, .overlay, .chat ul, .task-panel ul { overflow-x: hidden; overscroll-behavior: contain; }
+.lobby.ornate::before, .meeting-box.ornate::before, .map-box.ornate::before { top: 4px; right: 4px; }
+.lobby.ornate::after, .meeting-box.ornate::after, .map-box.ornate::after { bottom: 4px; left: 4px; }
+.vote-grid > *, .lobby-players > *, .lobby-body > * { min-width: 0; }
+.vote-card .info { min-width: 0; }
+.vote-card .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 350px) { .vote-grid { grid-template-columns: 1fr 1fr; } .vote-card { gap: 4px; padding: 4px; } }
