@@ -104,7 +104,7 @@ input:focus { border-color: var(--gold2); }
 .swatch.taken { opacity: .25; cursor: not-allowed; }
 
 /* ---------- home ---------- */
-#home { overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+#home { overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, calc(env(safe-area-inset-bottom) + 12px)) max(16px, env(safe-area-inset-left)); }
 #home.active { display: grid; justify-items: center; align-items: start; }
 #home.active > .home-wrap { margin-block: auto; } /* centred, yet the top stays reachable on short phones */
 .home-wrap { width: min(520px, 100%); display: grid; gap: 14px; }
@@ -212,7 +212,10 @@ body.is-imp .imp-only { display: grid; }
 .lobby-foot { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
 .lobby-show { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 58px); left: 50%; transform: translateX(-50%); }
 
-.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(8,5,12,.86); z-index: 10; padding: 12px; }
+.overlay { position: absolute; inset: 0; display: grid; justify-items: center; align-items: start; overflow-y: auto; background: rgba(8,5,12,.86); z-index: 10;
+  /* keep every window clear of the notch, the rounded corners and the home bar */
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.overlay > * { margin-block: auto; max-width: 100%; } /* centred, yet never cut off at the top */
 .overlay.dim { background: rgba(8,5,12,.72); }
 .overlay.rays { background: radial-gradient(circle, rgba(20,12,30,.9), rgba(5,3,10,.97)); }
 .overlay.rays::before, .overlay.splash .splash-burst {
@@ -330,7 +333,7 @@ body.is-imp .imp-only { display: grid; }
 .door-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
 .door-grid .btn .ico { width: 18px; height: 18px; }
 
-.map-box { width: min(1040px, 100%); border-radius: 20px; padding: 10px 12px; display: grid; gap: 8px; animation: slideIn .3s both; }
+.map-box { width: min(1040px, 100%); max-height: 100%; overflow: auto; border-radius: 20px; padding: 10px 12px; display: grid; gap: 8px; animation: slideIn .3s both; }
 #mapCanvas { width: 100%; height: auto; border-radius: 12px; background: #0b1026; touch-action: manipulation; border: 1px solid var(--line); }
 
 .toast { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 120px); left: 50%; transform: translateX(-50%) translateY(-20px); background: linear-gradient(rgba(28,17,12,.96), rgba(18,10,7,.96)); border: 1px solid var(--gold); border-radius: 14px; padding: 10px 18px; font-weight: 800; opacity: 0; transition: .3s cubic-bezier(.2,1.4,.4,1); pointer-events: none; z-index: 30; max-width: 90vw; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
@@ -444,4 +447,17 @@ body.is-imp .imp-only { display: grid; }
   .joystick { width: 104px; height: 104px; left: max(10px, env(safe-area-inset-left)); }
   .actions { gap: 6px; right: max(8px, env(safe-area-inset-right)); }
   .act { width: 56px; height: 56px; }
+}
+
+/* iPhone on its side: short screens. The lobby uses the full height, the task list stays short so it never
+   covers the action buttons, and the map scales to the height instead of running off the bottom. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .lobby { top: calc(max(8px, env(safe-area-inset-top)) + 52px); max-height: calc(100% - max(8px, env(safe-area-inset-top)) - 52px - max(8px, env(safe-area-inset-bottom)));
+    width: min(780px, calc(100% - max(12px, env(safe-area-inset-left)) - max(12px, env(safe-area-inset-right)))); padding: 10px 14px; }
+  .lobby-body { grid-template-columns: 1.1fr 1fr; gap: 12px; padding: 8px 0; }
+  .lobby-players { grid-template-columns: 1fr 1fr; }
+  .task-panel ul { max-height: 28vh; }
+  .map-box { width: auto; }
+  #mapCanvas { width: auto; max-width: 100%; max-height: calc(100vh - 110px); justify-self: center; }
+  .meeting-box { padding: 10px 12px; }
 }
