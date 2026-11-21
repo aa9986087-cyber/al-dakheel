@@ -77,13 +77,15 @@ export function maxImpostors(n) {
   return 3;
 }
 
-export const ROOM_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+// Room codes are five digits. Digits typed on an Arabic keyboard (٠-٩, ۰-۹) count as the same code.
+export const ROOM_CODE_CHARS = "0123456789";
 export const ROOM_CODE_LEN = 5;
 
 export function normalizeCode(code) {
   return String(code || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[^0-9]/g, "")
     .slice(0, ROOM_CODE_LEN);
 }
 

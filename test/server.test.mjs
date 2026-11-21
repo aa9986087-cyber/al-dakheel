@@ -60,7 +60,7 @@ test("create a room, join by code, start, and receive secret roles", async () =>
 });
 
 test("joining a room that does not exist is refused", async () => {
-  const c = client("ZZZZZ", false, "تائه");
+  const c = client("99999", false, "تائه");
   await c.open;
   const m = await c.wait((x) => x.t === "error");
   assert.equal(m.reason, "not_found");

@@ -216,7 +216,7 @@ function homeInit() {
   const join = () => {
     if (!readName()) return;
     const c = normalizeCode($("codeInput").value);
-    if (!isValidCode(c)) { $("homeMsg").textContent = "رمز الغرفة من ٥ خانات."; return; }
+    if (!isValidCode(c)) { $("homeMsg").textContent = "رمز الغرفة ٥ أرقام."; return; }
     enterRoom(c, false);
   };
   $("joinBtn").onclick = join;
