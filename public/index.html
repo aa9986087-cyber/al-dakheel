@@ -40,11 +40,17 @@
             </div>
           </div>
         </div>
-        <button id="createBtn" class="btn gold big shine"><i data-icon="play"></i><span>إنشاء غرفة جديدة</span></button>
-        <div class="join-row">
-          <input id="codeInput" maxlength="5" placeholder="رمز الغرفة" dir="ltr" autocapitalize="characters" autocomplete="off">
-          <button id="joinBtn" class="btn">انضمام</button>
-        </div>
+        <nav class="main-menu" aria-label="القائمة الرئيسية">
+          <button id="createBtn" class="menu-item gold-item"><i data-icon="users"></i><span><b>العب مع ربعك</b><small>أنشئ غرفة وأرسل الرابط للعائلة</small></span></button>
+          <button id="botsBtn" class="menu-item"><i data-icon="bot"></i><span><b>العب مع بوتات</b><small>جرّب لحالك ضد لاعبين آليين</small></span></button>
+          <div class="menu-item join-item">
+            <i data-icon="key"></i>
+            <div class="join-row">
+              <input id="codeInput" maxlength="5" placeholder="رمز الغرفة" dir="ltr" autocapitalize="characters" autocomplete="off" aria-label="رمز الغرفة">
+              <button id="joinBtn" class="btn">انضمام</button>
+            </div>
+          </div>
+        </nav>
         <p id="homeMsg" class="msg" role="status"></p>
         <details class="howto">
           <summary>كيف نلعب؟</summary>
@@ -76,6 +82,7 @@
           <button id="mapBtn" class="round-btn" title="الخريطة (M)"><i data-icon="map"></i></button>
           <button id="soundBtn" class="round-btn" title="الصوت"><i data-icon="sound"></i></button>
           <button id="ecoBtn" class="round-btn" title="توفير البطارية"><i data-icon="leaf"></i></button>
+          <button id="homeBtn" class="round-btn" title="القائمة الرئيسية"><i data-icon="home"></i></button>
         </div>
       </div>
       <div id="sabBanner" class="sab-banner hidden"></div>
@@ -207,6 +214,15 @@
       <div class="task-box ornate">
         <div class="box-head"><b id="taskTitle"></b><button id="taskClose" class="round-btn small"><i data-icon="close"></i></button></div>
         <div id="taskBody" class="task-body"></div>
+      </div>
+    </div>
+
+    <!-- Leave to the main menu -->
+    <div id="leaveAsk" class="overlay hidden">
+      <div class="panel ornate leave-box">
+        <h3>ترجع للقائمة الرئيسية؟</h3>
+        <p class="muted">بتطلع من الغرفة. تقدر ترجع لها بنفس الرمز ما دامت اللعبة في الانتظار.</p>
+        <div class="row"><button id="leaveYes" class="btn gold">اطلع</button><button id="leaveNo" class="btn">كمّل اللعب</button></div>
       </div>
     </div>
 

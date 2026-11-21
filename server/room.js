@@ -6,6 +6,7 @@ import {
 } from "../public/shared/config.js";
 import { MAP, TASK_BY_ID, VENT_BY_ID, spawnPoint } from "../public/shared/map.js";
 import { canStand, lineClear, isWalkable, closedDoorRects, dist } from "../public/shared/geom.js";
+import { Bots } from "./bots.js";
 
 const SAB_KINDS = ["lights", "comms", "fuel", "doors"];
 
@@ -22,6 +23,7 @@ export class Room {
     this.dirty = true;
     this.emptySince = now();
     this.resetRound();
+    this.bots = new Bots(this);
   }
 
   resetRound() {
@@ -56,8 +58,9 @@ export class Room {
     this.dirty = true;
   }
 
+  /** Bots keep no one company: a room with only bots in it is empty. */
   isEmpty() {
-    return ![...this.players.values()].some((p) => p.connected);
+    return ![...this.players.values()].some((p) => p.connected && !p.bot);
   }
 
   /** True once nobody has been here for a while; adapters drop the room. */
@@ -105,7 +108,7 @@ export class Room {
     p.connected = true;
     p.disconnectedAt = 0;
     this.conns.set(conn, p.id);
-    if (![...this.players.values()].some((x) => x.host && x.connected && x !== p)) {
+    if (![...this.players.values()].some((x) => x.host && x.connected && !x.bot && x !== p)) {
       for (const x of this.players.values()) x.host = false;
       p.host = true;
     }
@@ -147,7 +150,7 @@ export class Room {
   }
 
   passHost() {
-    const next = [...this.players.values()].find((x) => x.connected && !x.left);
+    const next = [...this.players.values()].find((x) => x.connected && !x.left && !x.bot);
     for (const x of this.players.values()) x.host = x === next;
   }
 
@@ -383,9 +386,11 @@ export class Room {
       if (now >= this.eject.endsAt) this.endEject();
     }
 
+    if (this.bots.list.length) this.bots.update();
+
     if (this.dirty) {
       this.dirty = false;
-      for (const p of this.players.values()) if (p.conn) this.send(p, this.view(p));
+      for (const p of this.players.values()) if (p.conn && !p.bot) this.send(p, this.view(p));
     }
     this.broadcastPositions();
   }
@@ -394,7 +399,7 @@ export class Room {
     if (this.phase !== "lobby" && this.phase !== "play") return;
     const all = [...this.players.values()].filter((p) => !p.left);
     for (const viewer of all) {
-      if (!viewer.conn) continue;
+      if (!viewer.conn || viewer.bot) continue;
       const d = [];
       for (const p of all) {
         const ghost = !p.alive;
@@ -414,7 +419,7 @@ export class Room {
     const seeAll = this.phase === "end";
     const imp = me.role === "imp" && this.phase !== "lobby";
     const players = [...this.players.values()].map((p) => ({
-      id: p.id, name: p.name, color: p.color, host: p.host, connected: p.connected, left: p.left,
+      id: p.id, name: p.name, color: p.color, host: p.host, connected: p.connected, left: p.left, bot: !!p.bot,
       dead: !p.alive && (p.knownDead || !me.alive || p === me || seeAll),
       role: seeAll || p === me || (imp && p.role === "imp") ? p.role : undefined,
       voted: this.phase === "meeting" ? p.vote !== undefined : undefined
@@ -470,6 +475,15 @@ const HANDLERS = {
       const taken = [...this.players.values()].some((x) => x !== p && x.color === msg.color);
       if (!taken) p.color = msg.color;
     }
+    this.dirty = true;
+  },
+
+  /** The host sets how many computer players join the lobby. */
+  bots(p, msg) {
+    if (!p.host || this.phase !== "lobby") return;
+    const n = Number(msg.n);
+    if (!Number.isInteger(n)) return;
+    this.bots.setCount(n);
     this.dirty = true;
   },
 

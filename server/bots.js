@@ -1,5 +1,5 @@
-// Computer players for the offline preview. They read the room directly and act through the same
-// messages a real player sends, so the server rules still apply to them.
+// Computer players. The host adds them from the lobby (and the offline preview uses them too). They read the
+// room directly and act through the same messages a real player sends, so the server rules still apply to them.
 import { MAP, TASK_BY_ID, roomAt, navGraph } from "../public/shared/map.js";
 import { BASE_SPEED, VISION, KILL_RANGE, TICK_MS } from "../public/shared/config.js";
 import { moveWithCollision, lineClear, closedDoorRects, dist } from "../public/shared/geom.js";
@@ -70,7 +70,11 @@ export class Bots {
       close() {}
     };
     this.room.connect(bot.conn);
-    this.room.message(bot.conn, { t: "hello", token: "bot-" + ++this.seq, name });
+    this.room.message(bot.conn, { t: "hello", token: "bot-" + this.room.newId() + "-" + ++this.seq, name });
+    const p = this.room.players.get(bot.id);
+    if (!p) { this.room.disconnect(bot.conn); return; }
+    p.bot = true;
+    p.host = false;
     this.list.push(bot);
   }
 

@@ -3,7 +3,7 @@ import { MAP, TASK_BY_ID, VENT_BY_ID, ROOM_BY_ID, roomAt } from "../shared/map.j
 import { moveWithCollision, closedDoorRects, lineClear, visionPolygon, dist } from "../shared/geom.js";
 import { Net } from "./net.js";
 import { Input } from "./input.js";
-import { Renderer, drawCharacter, colorHex, Sky, drawAirship, star8 } from "./render.js";
+import { Renderer, drawCharacter, colorHex, Sky, drawAirship, medallion } from "./render.js";
 import { mountGame } from "./tasks.js";
 import { sfx, toggleMute, isMuted } from "./audio.js";
 import { icon } from "./icons.js";
@@ -36,6 +36,7 @@ let lastSent = 0, sentX = 0, sentY = 0;
 let modal = null; // { kind, cleanup }
 let prevPhase = null;
 let pendingVote = null;
+let wantBots = 0; // bots to add once the room we just created answers
 let meetingShownAt = 0;
 let seenStamps = new Set();
 let profile = { name: store.get("dakheel-name") || "", color: store.get("dakheel-color") || COLORS[0].id };
@@ -158,16 +159,20 @@ function homeInit() {
   const params = new URLSearchParams(location.search);
   const code = normalizeCode(params.get("room"));
   if (code) $("codeInput").value = code;
-  $("createBtn").onclick = async () => {
-    if (!readName()) return;
-    $("createBtn").disabled = true;
+  const create = async (bots) => {
+    if (!readName() || $("createBtn").disabled) return;
+    $("createBtn").disabled = $("botsBtn").disabled = true;
     try {
       const { code } = await Net.newCode();
+      wantBots = bots;
       enterRoom(code, true);
     } catch {
       $("homeMsg").textContent = "تعذّر إنشاء الغرفة، تأكد من الاتصال.";
-    } finally { $("createBtn").disabled = false; }
+    } finally { $("createBtn").disabled = $("botsBtn").disabled = false; }
   };
+  $("createBtn").onclick = () => create(0);
+  // Playing with bots is a normal room the player hosts, filled with computer players straight away.
+  $("botsBtn").onclick = () => create(5);
   const join = () => {
     if (!readName()) return;
     const c = normalizeCode($("codeInput").value);
@@ -207,7 +212,7 @@ function leaveToHome(text) {
   net?.close();
   net = null; S = null; prevPhase = null;
   closeModal();
-  for (const id of ["lobby", "meeting", "eject", "end", "reveal", "lobbyShow", "splash", "koScene"]) show(id, false);
+  for (const id of ["lobby", "meeting", "eject", "end", "reveal", "lobbyShow", "splash", "koScene", "leaveAsk"]) show(id, false);
   $("game").classList.remove("active");
   $("home").classList.add("active");
   heroOn = true;
@@ -391,6 +396,7 @@ let lobbyHidden = false;
 function renderLobby() {
   if (!S || S.phase !== "lobby") return;
   const mine = myPlayer();
+  if (wantBots && mine?.host) { net.send({ t: "bots", n: wantBots }); wantBots = 0; }
   $("roomCode").textContent = S.code;
   const list = $("lobbyPlayers");
   list.innerHTML = "";
@@ -401,6 +407,7 @@ function renderLobby() {
     const nm = document.createElement("span");
     nm.textContent = p.name + (p.id === myId ? " (أنت)" : "");
     li.append(nm);
+    if (p.bot) { const t = document.createElement("span"); t.className = "bot-tag"; t.textContent = "بوت"; li.append(t); }
     if (p.host) { const c = document.createElement("span"); c.className = "crown"; c.title = "المضيف"; c.innerHTML = icon("crown"); li.append(c); }
     list.append(li);
   }
@@ -412,6 +419,11 @@ function renderLobby() {
   const host = !!mine?.host;
   const box = $("settingsBox");
   box.innerHTML = "";
+  const bots = S.players.filter((p) => p.bot).length;
+  const botRow = document.createElement("div");
+  botRow.className = "setting";
+  botRow.innerHTML = `<span>اللاعبون الآليون</span><div class="stepper"><button ${!host || bots <= 0 ? "disabled" : ""} data-bots="-1">−</button><b>${ar(bots)}</b><button ${!host || S.players.length >= 12 ? "disabled" : ""} data-bots="1">+</button></div>`;
+  box.append(botRow);
   for (const [key, def] of Object.entries(SETTINGS)) {
     const v = S.settings[key];
     const row = document.createElement("div");
@@ -420,7 +432,10 @@ function renderLobby() {
     row.innerHTML = `<span>${def.label}</span><div class="stepper"><button ${!host || v <= def.min ? "disabled" : ""} data-k="${key}" data-d="-1">−</button><b>${shown}</b><button ${!host || v >= def.max ? "disabled" : ""} data-k="${key}" data-d="1">+</button></div>`;
     box.append(row);
   }
-  box.querySelectorAll("button").forEach((b) => {
+  botRow.querySelectorAll("button").forEach((b) => {
+    b.onclick = () => { net.send({ t: "bots", n: bots + Number(b.dataset.bots) }); sfx.vote(); };
+  });
+  box.querySelectorAll("button[data-k]").forEach((b) => {
     b.onclick = () => {
       const k = b.dataset.k, def = SETTINGS[k];
       net.send({ t: "settings", values: { [k]: S.settings[k] + def.step * Number(b.dataset.d) } });
@@ -431,7 +446,7 @@ function renderLobby() {
   $("startBtn").classList.toggle("hidden", !host);
   $("startBtn").disabled = n < MIN_PLAYERS;
   $("lobbyHint").textContent = host
-    ? n < MIN_PLAYERS ? `بانتظار اللاعبين… تحتاج ${ar(MIN_PLAYERS)} على الأقل (الأفضل ٥ فأكثر)` : "كل شيء جاهز! اضغط ابدأ عندما يكتمل الجميع."
+    ? n < MIN_PLAYERS ? `بانتظار اللاعبين… تحتاج ${ar(MIN_PLAYERS)} على الأقل (الأفضل ٥ فأكثر)، أو أضف لاعبين آليين من الإعدادات` : "كل شيء جاهز! اضغط ابدأ عندما يكتمل الجميع."
     : "بانتظار المضيف ليبدأ الرحلة. تجوّل في الطائرة حتى ذلك الحين!";
 }
 
@@ -455,6 +470,9 @@ function lobbyInit() {
   };
   $("lobbyName").addEventListener("keydown", (e) => e.key === "Enter" && $("lobbyNameSave").click());
   $("startBtn").onclick = () => net.send({ t: "start" });
+  $("homeBtn").onclick = () => show("leaveAsk");
+  $("leaveNo").onclick = () => show("leaveAsk", false);
+  $("leaveYes").onclick = () => { show("leaveAsk", false); leaveToHome(); };
   $("againBtn").onclick = () => net.send({ t: "lobby" });
 }
 
@@ -1019,7 +1037,7 @@ function startConfetti(winner) {
       if (crew && b.y > cv.height + 20) { b.y = -20; b.x = Math.random() * cv.width; }
       if (!crew && b.y < -20) { b.y = cv.height + 20; b.x = Math.random() * cv.width; }
       g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.fillStyle = b.c;
-      if (crew) { if (b.s > 7 * d) { star8(g, 0, 0, b.s * 0.8, 0.45); g.fill(); } else g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); }
+      if (crew) { if (b.s > 7 * d) { medallion(g, 0, 0, b.s * 0.8); g.fill(); } else g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); }
       else { g.globalAlpha = 0.7; g.beginPath(); g.arc(0, 0, b.s / 2, 0, TAU); g.fill(); }
       g.restore();
     }

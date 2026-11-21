@@ -280,3 +280,42 @@ test("host passes on when the host leaves", () => {
   g.room.disconnect(g.conns[0]);
   assert.equal(g.p(1).host, true);
 });
+
+test("the host adds bots in the lobby, and they are marked as bots", () => {
+  const g = setup(1);
+  g.send(0, { t: "bots", n: 4 });
+  assert.equal(g.room.players.size, 5);
+  g.room.tick();
+  const state = g.lastState(0);
+  assert.equal(state.players.filter((p) => p.bot).length, 4);
+  assert.equal(state.players.find((p) => p.id === g.ids[0]).host, true);
+  g.send(0, { t: "bots", n: 2 });
+  assert.equal(g.room.players.size, 3);
+  const g2 = setup(2);
+  g2.send(1, { t: "bots", n: 3 });
+  assert.equal(g2.room.players.size, 2, "only the host adds bots");
+});
+
+test("bots never become host, and a room with only bots counts as empty", () => {
+  const g = setup(1);
+  g.send(0, { t: "bots", n: 3 });
+  g.room.disconnect(g.conns[0]);
+  assert.equal([...g.room.players.values()].some((p) => p.bot && p.host), false);
+  assert.equal(g.room.isEmpty(), true);
+});
+
+test("one player and five bots play a whole match: tasks, meetings and votes", () => {
+  const g = setup(1);
+  g.send(0, { t: "bots", n: 5 });
+  g.send(0, { t: "start" });
+  assert.equal(g.room.phase, "play");
+  let meetings = 0, sawMeeting = false;
+  for (let i = 0; i < 20000 && g.room.phase !== "end"; i++) {
+    g.clock.advance(66);
+    g.room.tick();
+    if (g.room.phase === "meeting" && !sawMeeting) { meetings++; sawMeeting = true; }
+    if (g.room.phase !== "meeting") sawMeeting = false;
+  }
+  assert.equal(g.room.phase, "end", "the match finishes on its own");
+  assert.ok(g.room.taskProgress() > 0 || meetings > 0, "bots did tasks or held a meeting");
+});

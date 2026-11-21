@@ -25,13 +25,16 @@ function makeCanvas(w, h) {
   return c;
 }
 
-export function star8(g, x, y, r, inner = 0.55) {
+// Floor and wall medallion: a rounded diamond (no star shapes anywhere in the game, by the owner's request).
+export function medallion(g, x, y, r) {
+  // Sides bulge outwards, so the shape reads as a soft lozenge and never as a pointed star.
+  const k = r * 0.62;
   g.beginPath();
-  for (let i = 0; i < 16; i++) {
-    const a = (i * Math.PI) / 8 - Math.PI / 2;
-    const rr = i % 2 ? r * inner : r;
-    g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
+  g.moveTo(x, y - r);
+  g.quadraticCurveTo(x + k, y - k, x + r, y);
+  g.quadraticCurveTo(x + k, y + k, x, y + r);
+  g.quadraticCurveTo(x - k, y + k, x - r, y);
+  g.quadraticCurveTo(x - k, y - k, x, y - r);
   g.closePath();
 }
 
@@ -50,9 +53,9 @@ const FLOORS = {
   carpet: [96, 96, (g, s) => {
     g.fillStyle = "#5e1620"; g.fillRect(0, 0, s, s);
     g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 2; g.strokeRect(0, 0, s, s);
-    g.fillStyle = "#7d2230"; star8(g, s / 2, s / 2, s * 0.34); g.fill();
-    g.strokeStyle = "#d9a648"; g.lineWidth = 2.5; star8(g, s / 2, s / 2, s * 0.34); g.stroke();
-    g.fillStyle = "#1d5d55"; star8(g, s / 2, s / 2, s * 0.15); g.fill();
+    g.fillStyle = "#7d2230"; medallion(g, s / 2, s / 2, s * 0.34); g.fill();
+    g.strokeStyle = "#d9a648"; g.lineWidth = 2.5; medallion(g, s / 2, s / 2, s * 0.34); g.stroke();
+    g.fillStyle = "#1d5d55"; medallion(g, s / 2, s / 2, s * 0.15); g.fill();
     g.fillStyle = "#e7c27a"; g.beginPath(); g.arc(s / 2, s / 2, 4, 0, TAU); g.fill();
     for (const [x, y] of [[0, 0], [s, 0], [0, s], [s, s]]) { g.fillStyle = "#d9a648"; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); }
   }],
@@ -66,14 +69,14 @@ const FLOORS = {
   night: [64, 64, (g, s) => {
     g.fillStyle = "#16203a"; g.fillRect(0, 0, s, s);
     g.fillStyle = "#1b2848"; rr(g, 3, 3, s - 6, s - 6, 6); g.fill();
-    g.strokeStyle = "rgba(217,166,72,.35)"; g.lineWidth = 1.5; star8(g, s / 2, s / 2, s * 0.2); g.stroke();
+    g.strokeStyle = "rgba(217,166,72,.35)"; g.lineWidth = 1.5; medallion(g, s / 2, s / 2, s * 0.2); g.stroke();
     g.fillStyle = "rgba(255,255,255,.05)"; g.fillRect(6, 6, s - 12, 3);
   }],
   teal: [60, 60, (g, s) => {
     g.fillStyle = "#0f4c4f"; g.fillRect(0, 0, s, s);
     g.fillStyle = "#156268"; rr(g, 2, 2, s - 4, s - 4, 5); g.fill();
-    g.fillStyle = "#e9f2ee"; star8(g, s / 2, s / 2, s * 0.22); g.fill();
-    g.fillStyle = "#156268"; star8(g, s / 2, s / 2, s * 0.11); g.fill();
+    g.fillStyle = "#e9f2ee"; medallion(g, s / 2, s / 2, s * 0.22); g.fill();
+    g.fillStyle = "#156268"; medallion(g, s / 2, s / 2, s * 0.11); g.fill();
     g.fillStyle = "#d9a648"; for (const [x, y] of [[0, 0], [s, 0], [0, s], [s, s]]) { g.beginPath(); g.arc(x, y, 5, 0, TAU); g.fill(); }
   }],
   copper: [48, 48, (g, s) => {
@@ -93,7 +96,7 @@ const FLOORS = {
     g.fillStyle = "#cfc8b8"; g.fillRect(0, 0, s, s);
     g.fillStyle = "#e3ddcf"; rr(g, 2, 2, s - 4, s - 4, 4); g.fill();
     g.strokeStyle = "rgba(120,110,90,.18)"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(8, 20); g.bezierCurveTo(30, 10, 40, 50, 66, 40); g.stroke();
-    g.strokeStyle = "rgba(22,120,110,.55)"; g.lineWidth = 2; star8(g, s / 2, s / 2, s * 0.18); g.stroke();
+    g.strokeStyle = "rgba(22,120,110,.55)"; g.lineWidth = 2; medallion(g, s / 2, s / 2, s * 0.18); g.stroke();
   }],
   wood: [64, 32, (g, w, h) => { // parquet herringbone-ish
     g.fillStyle = "#5a3920"; g.fillRect(0, 0, w, h);
@@ -138,8 +141,8 @@ function wallFacePattern(g) {
     const zy = 12, zh = 30;
     p.fillStyle = "#0f4c4f"; p.fillRect(0, zy, w, zh);
     for (let x = 0; x < w; x += 30) {
-      p.fillStyle = "#e9f2ee"; star8(p, x + 15, zy + zh / 2, 11); p.fill();
-      p.fillStyle = (x / 30) % 2 ? "#c9973f" : "#1f7c7a"; star8(p, x + 15, zy + zh / 2, 6); p.fill();
+      p.fillStyle = "#e9f2ee"; medallion(p, x + 15, zy + zh / 2, 11); p.fill();
+      p.fillStyle = (x / 30) % 2 ? "#c9973f" : "#1f7c7a"; medallion(p, x + 15, zy + zh / 2, 6); p.fill();
       p.fillStyle = "#0b3436"; p.beginPath(); p.moveTo(x, zy); p.lineTo(x + 5, zy + zh / 2); p.lineTo(x, zy + zh); p.fill();
     }
     p.fillStyle = "#c9973f"; p.fillRect(0, zy + zh, w, 3);
@@ -237,7 +240,7 @@ function buildWorldOnce() {
     f.fillStyle = "#7a1f2b"; f.fillRect(rx + 30, y, rw - 60, 60);
     f.strokeStyle = "#e7c27a"; f.lineWidth = 3; f.strokeRect(rx + 37, y + 7, rw - 74, 46);
     f.strokeStyle = "#1d5d55"; f.lineWidth = 2; f.strokeRect(rx + 43, y + 13, rw - 86, 34);
-    for (let x = rx + 80; x < rx + rw - 60; x += 76) { f.fillStyle = "#e7c27a"; star8(f, x, y + 30, 11); f.fill(); f.fillStyle = "#1d5d55"; star8(f, x, y + 30, 5); f.fill(); }
+    for (let x = rx + 80; x < rx + rw - 60; x += 76) { f.fillStyle = "#e7c27a"; medallion(f, x, y + 30, 11); f.fill(); f.fillStyle = "#1d5d55"; medallion(f, x, y + 30, 5); f.fill(); }
     for (let x = rx + 30; x < rx + rw - 30; x += 8) { f.fillStyle = "#e9d6b0"; f.fillRect(x, y - 4, 3, 4); f.fillRect(x, y + 60, 3, 4); }
     f.restore();
   }
@@ -462,10 +465,10 @@ function rug(g, x, y, w, h, base, edge, mid = "#1d5d55") {
   g.strokeStyle = edge; g.lineWidth = 5; g.strokeRect(x + 9, y + 9, w - 18, h - 18);
   g.strokeStyle = mid; g.lineWidth = 3; g.strokeRect(x + 18, y + 18, w - 36, h - 36);
   g.lineWidth = 1.5; g.strokeStyle = edge; g.strokeRect(x + 24, y + 24, w - 48, h - 48);
-  g.fillStyle = edge; star8(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.24); g.fill();
-  g.fillStyle = mid; star8(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.15); g.fill();
-  g.fillStyle = edge; star8(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.05); g.fill();
-  for (const [cx, cy] of [[x + 40, y + 40], [x + w - 40, y + 40], [x + 40, y + h - 40], [x + w - 40, y + h - 40]]) { g.fillStyle = edge; star8(g, cx, cy, 10); g.fill(); }
+  g.fillStyle = edge; medallion(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.24); g.fill();
+  g.fillStyle = mid; medallion(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.15); g.fill();
+  g.fillStyle = edge; medallion(g, x + w / 2, y + h / 2, Math.min(w, h) * 0.05); g.fill();
+  for (const [cx, cy] of [[x + 40, y + 40], [x + w - 40, y + 40], [x + 40, y + h - 40], [x + w - 40, y + h - 40]]) { g.fillStyle = edge; medallion(g, cx, cy, 10); g.fill(); }
   for (let k = x + 4; k < x + w - 4; k += 7) { g.fillStyle = "#e9d6b0"; g.fillRect(k, y - 5, 3, 5); g.fillRect(k, y + h, 3, 5); }
 }
 
@@ -479,9 +482,9 @@ function octRug(g, cx, cy, R, base, edge, mid = "#1d5d55") {
   octPath(g, cx, cy + 8, R); g.fillStyle = "rgba(0,0,0,.2)"; g.fill();
   octPath(g, cx, cy, R); g.fillStyle = base; g.fill();
   for (const [k, c, w] of [[R - 12, edge, 5], [R - 26, mid, 4], [R - 36, edge, 1.5]]) { octPath(g, cx, cy, k); g.strokeStyle = c; g.lineWidth = w; g.stroke(); }
-  g.fillStyle = edge; star8(g, cx, cy, R * 0.5); g.fill();
-  g.fillStyle = mid; star8(g, cx, cy, R * 0.34); g.fill();
-  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + Math.PI / 8; g.fillStyle = edge; star8(g, cx + Math.cos(a) * (R - 70), cy + Math.sin(a) * (R - 70), 14); g.fill(); }
+  g.fillStyle = edge; medallion(g, cx, cy, R * 0.5); g.fill();
+  g.fillStyle = mid; medallion(g, cx, cy, R * 0.34); g.fill();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + Math.PI / 8; g.fillStyle = edge; medallion(g, cx + Math.cos(a) * (R - 70), cy + Math.sin(a) * (R - 70), 14); g.fill(); }
   for (let i = 0; i < 8; i++) {
     const a1 = (i / 8) * TAU + Math.PI / 8, a2 = ((i + 1) / 8) * TAU + Math.PI / 8;
     for (let k = 0.05; k < 1; k += 0.06) { const x = cx + (Math.cos(a1) * (1 - k) + Math.cos(a2) * k) * (R + 4), y = cy + (Math.sin(a1) * (1 - k) + Math.sin(a2) * k) * (R + 4); g.fillStyle = "#e9d6b0"; g.fillRect(x - 1.5, y - 1.5, 3, 3); }
@@ -574,7 +577,7 @@ function drawDecor(g) {
     const tg = g.createRadialGradient(b.x - 24, b.y - 24, 8, b.x, b.y, 80);
     tg.addColorStop(0, "#fbe2a0"); tg.addColorStop(0.6, "#d4a24c"); tg.addColorStop(1, "#8a5d22");
     g.beginPath(); g.arc(b.x, b.y, 74, 0, TAU); fillStroke(g, tg, 4);
-    g.strokeStyle = "#7a5520"; g.lineWidth = 3; star8(g, b.x, b.y, 62); g.stroke();
+    g.strokeStyle = "#7a5520"; g.lineWidth = 3; medallion(g, b.x, b.y, 62); g.stroke();
     g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, 66, -2.6, -1.4); g.stroke();
     dallah(g, b.x - 48, b.y - 26, 0.95);
     for (const [dx, dy] of [[42, -38], [52, -16], [40, 36], [-30, 40]]) { g.beginPath(); g.ellipse(b.x + dx, b.y + dy, 7, 5, 0, 0, TAU); fillStroke(g, "#f6ecdc", 1.8); }
@@ -593,7 +596,7 @@ function drawDecor(g) {
         for (const [ox, oy] of [[-58, -18], [26, -18], [-18, -60], [-18, 30]]) cushion(g, x + ox + (ox < 0 && Math.abs(ox) > 40 ? 0 : 0), y + oy, ox === -18 ? 36 : 32, ox === -18 ? 30 : 36, "#1d5d55");
         shadowEllipse(g, x, y + 8, 40, 26, 0.35);
         g.beginPath(); g.arc(x, y, 34, 0, TAU); fillStroke(g, "#a87a35", 3);
-        g.strokeStyle = "#7a5520"; g.lineWidth = 2; star8(g, x, y, 26); g.stroke();
+        g.strokeStyle = "#7a5520"; g.lineWidth = 2; medallion(g, x, y, 26); g.stroke();
         dallah(g, x - 8, y - 4, 0.6);
         g.beginPath(); g.ellipse(x + 14, y + 8, 5, 4, 0, 0, TAU); fillStroke(g, "#f6ecdc", 1.5);
       }
@@ -697,7 +700,7 @@ function drawDecor(g) {
       g.beginPath(); g.arc(cx, cy, 38, 0, TAU); fillStroke(g, "#3a1e0e", 3);
       ANIMS.push({ x: cx, y: cy, r: 60, draw: (gg, t) => {
         gg.save(); gg.translate(cx, cy); gg.rotate(t * (i ? -2.4 : 2.4));
-        gg.fillStyle = "#e6a817"; star8(gg, 0, 0, 30, 0.45); gg.fill(); gg.strokeStyle = INK; gg.lineWidth = 2; gg.stroke();
+        gg.fillStyle = "#e6a817"; medallion(gg, 0, 0, 30, 0.45); gg.fill(); gg.strokeStyle = INK; gg.lineWidth = 2; gg.stroke();
         gg.restore();
         gg.fillStyle = `rgba(120,200,255,${0.4 + 0.4 * Math.sin(t * 9 + i)})`; gg.beginPath(); gg.arc(cx, cy, 7, 0, TAU); gg.fill();
       } });
@@ -875,7 +878,7 @@ function drawDecor(g) {
     for (let i = 0; i < 3; i++) {
       const x = r.x + 70 + i * 90, y = r.y + 40;
       g.beginPath(); g.ellipse(x, y, 26, 30, 0, 0, TAU); fillStroke(g, ["#7a1f2b", "#1d5d55", "#3f51b5"][i], 3);
-      g.fillStyle = "#e7c27a"; star8(g, x, y, 12); g.fill();
+      g.fillStyle = "#e7c27a"; medallion(g, x, y, 12); g.fill();
     }
     const tx = r.x + r.w / 2, ty = r.y + r.h / 2 + 10;
     shadowEllipse(g, tx, ty + 30, 40, 12, 0.35);
@@ -1014,7 +1017,7 @@ function bell(g, x, y, t) {
   g.fillStyle = bg; g.beginPath(); g.moveTo(-15, 18); g.quadraticCurveTo(-15, -6, 0, -8); g.quadraticCurveTo(15, -6, 15, 18); g.closePath(); g.fill(); g.stroke();
   g.beginPath(); g.arc(0, -10, 4, 0, TAU); g.fillStyle = "#e7c27a"; g.fill(); g.stroke();
   const glint = (t * 0.5) % 1;
-  if (glint < 0.2) { g.fillStyle = `rgba(255,255,255,${1 - glint * 5})`; star8(g, -6, 0, 6, 0.3); g.fill(); }
+  if (glint < 0.2) { g.fillStyle = `rgba(255,255,255,${1 - glint * 5})`; medallion(g, -6, 0, 6, 0.3); g.fill(); }
   g.restore();
 }
 
@@ -1130,7 +1133,7 @@ export function drawBody(g, x, y, colorId, t = 0) {
   g.restore();
   for (let i = 0; i < 3; i++) {
     const a = t * 3 + (i * TAU) / 3;
-    g.fillStyle = "#ffd76a"; star8(g, x - 30 + Math.cos(a) * 13, y - 4 + Math.sin(a) * 5, 5, 0.4); g.fill();
+    g.fillStyle = "#ffd76a"; medallion(g, x - 30 + Math.cos(a) * 13, y - 4 + Math.sin(a) * 5, 5, 0.4); g.fill();
   }
 }
 
@@ -1158,7 +1161,7 @@ export class Particles {
     for (const p of this.list) {
       const k = p.life / p.max;
       g.fillStyle = `rgba(${p.color},${p.a * (1 - k)})`;
-      if (p.star) { star8(g, p.x, p.y, p.size * (1 - k * 0.5), 0.4); g.fill(); }
+      if (p.star) { medallion(g, p.x, p.y, p.size * (1 - k * 0.5), 0.4); g.fill(); }
       else { g.beginPath(); g.arc(p.x, p.y, p.size + (p.grow || 0) * k, 0, TAU); g.fill(); }
     }
   }
@@ -1214,7 +1217,7 @@ export function drawAirship(g, x, y, s, t) {
   for (let k = -200; k <= 200; k += 50) { g.strokeStyle = "rgba(231,194,122,.85)"; g.lineWidth = 3; g.beginPath(); g.ellipse(k * 0.15, -40, Math.abs(230 - Math.abs(k) * 0.2) * Math.abs(Math.cos(k / 260)), 78, 0, -Math.PI / 2, Math.PI / 2); g.stroke(); }
   g.fillStyle = "#e7c27a"; g.fillRect(-240, -46, 480, 12);
   g.fillStyle = "#1d5d55"; g.fillRect(-240, -42, 480, 4);
-  for (let k = -200; k <= 200; k += 40) { g.fillStyle = "#e7c27a"; star8(g, k, -78, 9); g.fill(); }
+  for (let k = -200; k <= 200; k += 40) { g.fillStyle = "#e7c27a"; medallion(g, k, -78, 9); g.fill(); }
   g.fillStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.ellipse(-40, -86, 150, 18, 0, 0, TAU); g.fill();
   g.restore();
   // falcon emblem

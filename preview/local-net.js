@@ -2,7 +2,6 @@
 // the authoritative Room runs inside the page, with computer players.
 import { Room } from "../server/room.js";
 import { randomCode, TICK_MS } from "../public/shared/config.js";
-import { Bots } from "./bots.js";
 
 export class Net {
   static async newCode() {
@@ -24,12 +23,9 @@ export class Net {
     this.conn = { send: (s) => this.onMessage(JSON.parse(s)), close() {} };
     room.connect(this.conn);
     room.message(this.conn, { t: "hello", ...hello(), token: "" });
-    this.bots = new Bots(room);
+    this.bots = room.bots;
     this.bots.setCount(5);
-    this.timer = setInterval(() => {
-      this.bots.update();
-      room.tick();
-    }, TICK_MS);
+    this.timer = setInterval(() => room.tick(), TICK_MS);
     window.dispatchEvent(new CustomEvent("preview-room", { detail: this }));
   }
 
