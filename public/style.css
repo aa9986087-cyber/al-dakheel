@@ -26,6 +26,12 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); font-family: var(--body); overflow: hidden; }
 button, input { font: inherit; color: inherit; }
+/* iPhone Safari: no zoom on a quick second tap, no text selection on a long press of a button, and
+   fields keep 16px text so focusing them does not zoom the page. Elements that set their own
+   touch-action (the game canvas, the joystick) keep it. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, .swatch, .vote-card, .card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, select { font-size: max(16px, 1em); }
 button { cursor: pointer; }
 .hidden { display: none !important; }
 .muted { color: var(--muted); font-size: 0.9rem; margin: 0; }

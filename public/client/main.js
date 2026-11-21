@@ -190,6 +190,8 @@ function readName() {
 }
 
 function enterRoom(code, create) {
+  // A double tap on «انضمام» or «إنشاء» must not open a second connection to the same room.
+  if (net) return;
   sfx.unlock();
   try { history.replaceState(null, "", "?room=" + code); } catch { /* sandboxed */ }
   $("home").classList.remove("active");
@@ -914,9 +916,18 @@ function renderMeeting() {
   if (atBottom || !have) log.scrollTop = log.scrollHeight;
 }
 
+// The confirm tick appears right under the finger, so a confirmation only counts after a short pause:
+// a quick double tap on a player (or on «تخطّي») never casts the vote by itself.
+let voteArmedAt = 0;
+const confirmPause = 500;
 function castVote(target, confirmed = false) {
   if (!S || S.phase !== "meeting" || !S.alive || S.meeting.myVote !== undefined) return;
-  if (!confirmed) { pendingVote = pendingVote === target && target === "skip" ? (castVote("skip", true), null) : target; renderMeeting(); return; }
+  if (confirmed && performance.now() - voteArmedAt < confirmPause) return;
+  if (!confirmed) {
+    if (pendingVote === target && target === "skip") { castVote("skip", true); return; }
+    if (pendingVote === target) return;
+    pendingVote = target; voteArmedAt = performance.now(); renderMeeting(); return;
+  }
   pendingVote = null;
   sfx.vote();
   net.send({ t: "vote", target });
