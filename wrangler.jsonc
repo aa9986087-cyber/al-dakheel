@@ -8,19 +8,17 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/ws/*", "/api/*", "/mafia/*"]
+    "run_worker_first": ["/ws/*", "/api/*"]
   },
   "durable_objects": {
-    "bindings": [
-      { "name": "ROOMS", "class_name": "GameRoom" },
-      // Rooms of the Mafia game (its pages are on GitHub Pages; see the mafia repository)
-      { "name": "MAFIA", "class_name": "MafiaGame" }
-    ]
+    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
   },
   // SQLite-backed Durable Objects are the ones available on the free plan.
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["MafiaGame"] }
+    { "tag": "v2", "new_sqlite_classes": ["MafiaGame"] },
+    // The Mafia game moved to its own server (mafia-server); its rooms are removed from this one.
+    { "tag": "v3", "deleted_classes": ["MafiaGame"] }
   ],
   "observability": { "enabled": true }
 }
